@@ -1,0 +1,9 @@
+﻿# ASP.NET Core secrets
+appsettings.Development.json
+appsettings.Production.json
+.env
+
+# Visual Studio
+.vs/
+bin/
+obj/
