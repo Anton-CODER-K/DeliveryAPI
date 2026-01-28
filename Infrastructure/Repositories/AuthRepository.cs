@@ -1,7 +1,9 @@
 ﻿using System.Numerics;
 using System.Xml.Linq;
 using DeliveryAPI.Api.Middleware;
+using DeliveryAPI.Application.Enums.Auth;
 using DeliveryAPI.Application.Models.Result;
+using DeliveryAPI.Infrastructure.Entity.ReadModel;
 using DeliveryAPI.Infrastructure.Entity.Record;
 using Microsoft.AspNetCore.Identity;
 using Npgsql;
@@ -11,7 +13,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
 {
     public class AuthRepository
     {
-        public async Task<int> UserRegister(NpgsqlConnection conn, NpgsqlTransaction tx, string Phone)
+        public async Task<int> UserRegister(NpgsqlConnection conn, NpgsqlTransaction tx, string phone)
         {
             const string sql = """
 
@@ -26,7 +28,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
             cmd.Parameters.Add(
                 "@phone_number",
                 NpgsqlDbType.Varchar
-            ).Value = Phone;
+            ).Value = phone;
 
 
 
@@ -39,7 +41,6 @@ namespace DeliveryAPI.Infrastructure.Repositories
 
             return rows;
         }
-
         public async Task<int?> GetUserIdByPhone(NpgsqlConnection conn, NpgsqlTransaction tx, string phoneNumber)
         {
             const string sql = """
@@ -56,7 +57,6 @@ namespace DeliveryAPI.Infrastructure.Repositories
             return result == null ? null : (int)result;
 
         }
-
         public async Task InsertLoginCode(NpgsqlConnection conn, NpgsqlTransaction tx, string phone, string hashCode, int userId)
         {
             const string sql = """
@@ -77,7 +77,6 @@ namespace DeliveryAPI.Infrastructure.Repositories
 
 
         }
-
         public async Task<GetActiveCodeByPhoneResult?> GetActiveCodeByPhone(NpgsqlConnection conn, NpgsqlTransaction tx, string phone)
         {
             const string sql = """
@@ -114,19 +113,27 @@ namespace DeliveryAPI.Infrastructure.Repositories
             return null;
 
         }
-
-        public async Task UpdateLoginCode(NpgsqlConnection conn, NpgsqlTransaction tx, int phoneVerificationCodesId, string hashCode, int sentCountToday)
+        public async Task UpdateLoginCode(NpgsqlConnection conn, NpgsqlTransaction tx, int phoneVerificationCodesId, string hashCode)
         {
             const string sql = """
                 UPDATE phone_verification_codes
                 SET
                     code_hash = @hashCode,
                     sent_day = CURRENT_DATE,
-                    sent_count_today = @sentCountToday,
+                    sent_count_today = 
+                    CASE
+                        WHEN sent_day = CURRENT_DATE THEN sent_count_today + 1
+                        ELSE 1
+                    END,
                     last_sent_at = now(),
                     expires_at = now() + interval '3 minutes'
+
                 WHERE phone_verification_codes_id = @phoneVerificationCodesId
-                  AND used = false;
+                AND used = false
+                AND (
+                      sent_day <> CURRENT_DATE
+                      OR sent_count_today < 5
+                    );
                 """;
             
            
@@ -134,7 +141,6 @@ namespace DeliveryAPI.Infrastructure.Repositories
             await using var cmd = new NpgsqlCommand( sql, conn, tx);
 
             cmd.Parameters.Add("@hashCode", NpgsqlDbType.Text).Value = hashCode;
-            cmd.Parameters.Add("@sentCountToday", NpgsqlDbType.Integer).Value = sentCountToday;
             cmd.Parameters.Add("@phoneVerificationCodesId", NpgsqlDbType.Bigint).Value = phoneVerificationCodesId; 
 
 
@@ -162,6 +168,107 @@ namespace DeliveryAPI.Infrastructure.Repositories
 
             await cmd.ExecuteNonQueryAsync();
         }
+        public async Task<ActiveVerificationCodeForVerifyResult?> GetActiveCodeForVerifyByPhone(NpgsqlConnection conn, NpgsqlTransaction tx, string phone)
+        {
+            const string sql = """
+                SELECT
+                    phone_verification_codes_id,
+                    user_id,
+                    code_hash,
+                    expires_at,
+                    attempts_left
+                FROM phone_verification_codes
+                WHERE phone_number = @phone
+                  AND used = false
+                ORDER BY last_sent_at DESC
+                LIMIT 1;
+                """;
 
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+             
+            cmd.Parameters.Add("@phone", NpgsqlDbType.Varchar).Value = phone;
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                return new ActiveVerificationCodeForVerifyResult
+                {
+                    PhoneVerificationCodeId = reader.GetInt32(0),
+                    UserId = reader.GetInt32(1),
+                    CodeHash = reader.GetString(2),
+                    ExpiresAt = reader.GetDateTime(3),
+                    AttemptsLeft = reader.GetInt32(4)
+                };
+            }
+
+            return null;
+        }
+        public async Task DecrementCodeAttempts(NpgsqlConnection conn, NpgsqlTransaction tx, int phoneVerificationCodeId)
+        {
+            const string sql = """
+                UPDATE phone_verification_codes
+                SET attempts_left = attempts_left - 1
+                WHERE phone_verification_codes_id = @phoneVerificationCodeId
+                  AND used = false;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+            cmd.Parameters.Add("@phoneVerificationCodeId", NpgsqlDbType.Integer).Value = phoneVerificationCodeId;
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+        public async Task MarkCodeAsUsed(NpgsqlConnection conn, NpgsqlTransaction tx, int phoneVerificationCodeId)
+        {
+            const string sql = """
+                UPDATE phone_verification_codes
+                SET used = true
+                WHERE phone_verification_codes_id = @phoneVerificationCodeId
+                  AND used = false;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@phoneVerificationCodeId", NpgsqlDbType.Integer).Value = phoneVerificationCodeId;
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+        public async Task<string> GetRolesUserPhone(NpgsqlConnection conn, NpgsqlTransaction tx, int userId)
+        {
+            const string sql = """
+                SELECT r.name
+                FROM users u
+                JOIN roles r ON r.role_id = u.role_id
+                WHERE u.user_id = @userId;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@userId", NpgsqlDbType.Integer).Value = userId;
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                return reader.GetString(0);
+            }
+
+            throw new BusinessException("INSERT_ERROR", "Internal server error ");
+        }
+        public async Task CreateVerificationSession(NpgsqlConnection conn, NpgsqlTransaction tx, int userId, string tokenHash, string purpose)
+        {
+            const string sql = """
+                Insert Into verification_sessions (user_id, token_hash, purpose)
+                Values (@userId, @tokenHash, @purpose)
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@userId", NpgsqlDbType.Bigint).Value = userId;
+            cmd.Parameters.Add("@tokenHash", NpgsqlDbType.Text).Value = tokenHash;
+            cmd.Parameters.Add("@purpose", NpgsqlDbType.Varchar).Value = purpose;
+
+            await cmd.ExecuteNonQueryAsync();
+        }
     }
 }

@@ -59,7 +59,6 @@ namespace DeliveryAPI.Application.Services
 
         //    });
         //}
-
         public async Task StartAsync(string rawPhone)
         {
             var phone = NormalizeToE164(rawPhone);
@@ -80,13 +79,13 @@ namespace DeliveryAPI.Application.Services
                     await _authRepo.GetUserIdByPhone(conn, tx, phone)
                     ?? await _authRepo.UserRegister(conn, tx, phone);
 
+                // If code is received but not used, He its update
                 await _authRepo.MarkExpiredCodesAsUsed(conn, tx, phone);
 
                 var activeCode = await _authRepo.GetActiveCodeByPhone(conn, tx, phone);
 
                 if (activeCode == null)
                 {
-                    
                     await _authRepo.InsertLoginCode(conn, tx, phone, hashCode, userId);
                     shouldSendSms = true;
                     return;
@@ -109,28 +108,60 @@ namespace DeliveryAPI.Application.Services
                             "SMS_LIMIT_REACHED",
                             "Try again tomorrow"
                         );
-
-                    activeCode.SentCountToday++;
                 }
                 else
                 {
                     activeCode.SentDay = today;
-                    activeCode.SentCountToday = 1;
+                    
                 }
-
-                await _authRepo.UpdateLoginCode(
-                    conn,
-                    tx,
-                    activeCode.phoneVerificationCodesId,
-                    hashCode,
-                    activeCode.SentCountToday
-                );
-
+                await _authRepo.UpdateLoginCode(conn, tx, activeCode.phoneVerificationCodesId, hashCode);
                 shouldSendSms = true;
             });
 
             if (shouldSendSms)
                 await _notificationSender.SendAsync(phone, message);
+        }
+
+        public async Task<string> VerifyAsync(string rawPhone, string code)
+        {
+            var phone = NormalizeToE164(rawPhone);
+            var now = DateTime.UtcNow;
+            var inputHash = HashVerificationCode(code);
+            string token = string.Empty;
+
+            await _tx.ExecuteAsync(async (conn, tx) =>
+            {
+                var activeCode =
+                    await _authRepo.GetActiveCodeForVerifyByPhone(conn, tx, phone);
+
+                if (activeCode == null)
+                    throw new BusinessException("INVALID_CODE", "Invalid code");
+
+                if (activeCode.ExpiresAt <= now)
+                    throw new BusinessException("INVALID_CODE", "Invalid code");
+
+                if (activeCode.CodeHash != inputHash)
+                {
+                    if (activeCode.AttemptsLeft <= 0)
+                        throw new BusinessException("INVALID_CODE", "Invalid code");
+
+                    await _authRepo.DecrementCodeAttempts( conn, tx, activeCode.PhoneVerificationCodeId);
+
+                    throw new BusinessException("INVALID_CODE", "Invalid code");
+                }
+
+                token = GenerateToken();
+
+                await _authRepo.MarkCodeAsUsed(conn, tx, activeCode.PhoneVerificationCodeId);
+
+                var purpose = Enums.Auth.VerificationSessionsPurpose.Purpose.register;
+                string purposeString = purpose.ToString();
+
+                await _authRepo.CreateVerificationSession(conn, tx, activeCode.UserId, token, purposeString);         
+            });
+
+            return token;
+            
         }
 
         private static string NormalizeToE164(string input)
@@ -168,6 +199,15 @@ namespace DeliveryAPI.Application.Services
             var hash = sha.ComputeHash(bytes);
             return Convert.ToHexString(hash); 
         }
+        
+        private static string GenerateToken(int bytes = 32)
+        {
+            var buffer = new byte[bytes];
+            RandomNumberGenerator.Fill(buffer);
+            return Convert.ToBase64String(buffer);
+        }
+
+       
     }
 
     

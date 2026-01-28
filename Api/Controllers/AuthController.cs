@@ -24,5 +24,12 @@ namespace DeliveryAPI.Api.Controllers
             return Ok("Code Sent");
         }
 
+        [HttpPost("verify")]
+        public async Task<IActionResult> Verify([FromBody] AuthVerifyRequest request)
+        {
+            var tokens = await _authService.VerifyAsync(request.PhoneNumber, request.Code);
+            return Ok(tokens);
+        }
+
     }
 }
