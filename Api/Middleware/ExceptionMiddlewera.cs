@@ -31,33 +31,32 @@ namespace DeliveryAPI.Api.Middleware
             {
                 await _next(context);
             }
+            catch (UnauthorizedException ex)
+            {
+                context.Response.StatusCode = 401;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    code = "UNAUTHORIZED",
+                    message = ex.Message
+                });
+            }
             catch (BusinessException ex)
             {
-                context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                context.Response.StatusCode = 400;
                 await context.Response.WriteAsJsonAsync(new
                 {
                     code = ex.Code,
                     message = ex.Message
                 });
             }
-            catch (UnauthorizedAccessException)
-            {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsJsonAsync(new
-                {
-                    code = "UNAUTHORIZED",
-                    message = "Unauthorized"
-                });
-            }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
-
-                context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                context.Response.StatusCode = 500;
                 await context.Response.WriteAsJsonAsync(new
                 {
                     code = "INTERNAL_ERROR",
-                    message = "Internal server error"
+                    message = "Internal server error",
+                    messageTest = ex.Message
                 });
             }
         }

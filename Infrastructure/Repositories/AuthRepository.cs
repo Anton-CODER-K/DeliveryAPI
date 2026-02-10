@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Dynamic;
+using System.Numerics;
 using System.Xml.Linq;
 using DeliveryAPI.Api.Middleware;
 using DeliveryAPI.Application.Enums.Auth;
@@ -8,6 +9,7 @@ using DeliveryAPI.Infrastructure.Entity.Record;
 using Microsoft.AspNetCore.Identity;
 using Npgsql;
 using NpgsqlTypes;
+using static DeliveryAPI.Application.Enums.Auth.VerificationSessionsPurpose;
 
 namespace DeliveryAPI.Infrastructure.Repositories
 {
@@ -23,7 +25,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 """
             ;
 
-            await using var cmd = new NpgsqlCommand(sql,conn,tx);
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
 
             cmd.Parameters.Add(
                 "@phone_number",
@@ -57,6 +59,34 @@ namespace DeliveryAPI.Infrastructure.Repositories
             return result == null ? null : (int)result;
 
         }
+        public async Task<UserByLoginResult> GetUserByPhone(NpgsqlConnection conn, NpgsqlTransaction tx, string phoneNumber)
+        {
+            const string sql = """
+                SELECT u.user_id, r.name, u.password_hash
+                FROM users u
+                Join roles r on r.role_id = u.role_id
+                WHERE phone_number = @phone and is_active = true
+                Limit 1;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+            cmd.Parameters.Add("@phone", NpgsqlDbType.Varchar).Value = phoneNumber;
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                return new UserByLoginResult
+                {
+                    UserId = reader.GetInt32(0),
+                    Roles = reader.GetString(1),
+                    HashPassword = reader.IsDBNull(2) ? null : reader.GetString(2)
+                };
+            }
+
+            return null;
+
+        }
         public async Task InsertLoginCode(NpgsqlConnection conn, NpgsqlTransaction tx, string phone, string hashCode, int userId)
         {
             const string sql = """
@@ -67,7 +97,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 
                 """;
 
-            await using var cmd = new NpgsqlCommand( sql, conn, tx);
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
 
             cmd.Parameters.Add("@userId", NpgsqlDbType.Bigint).Value = userId;
             cmd.Parameters.Add("@phone", NpgsqlDbType.Varchar).Value = phone;
@@ -135,13 +165,13 @@ namespace DeliveryAPI.Infrastructure.Repositories
                       OR sent_count_today < 5
                     );
                 """;
-            
-           
 
-            await using var cmd = new NpgsqlCommand( sql, conn, tx);
+
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
 
             cmd.Parameters.Add("@hashCode", NpgsqlDbType.Text).Value = hashCode;
-            cmd.Parameters.Add("@phoneVerificationCodesId", NpgsqlDbType.Bigint).Value = phoneVerificationCodesId; 
+            cmd.Parameters.Add("@phoneVerificationCodesId", NpgsqlDbType.Bigint).Value = phoneVerificationCodesId;
 
 
             var affected = await cmd.ExecuteNonQueryAsync();
@@ -185,7 +215,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 """;
 
             await using var cmd = new NpgsqlCommand(sql, conn, tx);
-             
+
             cmd.Parameters.Add("@phone", NpgsqlDbType.Varchar).Value = phone;
 
             await using var reader = await cmd.ExecuteReaderAsync();
@@ -233,7 +263,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
 
             await cmd.ExecuteNonQueryAsync();
         }
-        public async Task<string> GetRolesUserPhone(NpgsqlConnection conn, NpgsqlTransaction tx, int userId)
+        public async Task<string> GetRolesUserByUserId(NpgsqlConnection conn, NpgsqlTransaction tx, int userId)
         {
             const string sql = """
                 SELECT r.name
@@ -253,7 +283,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 return reader.GetString(0);
             }
 
-            throw new BusinessException("INSERT_ERROR", "Internal server error ");
+            return null;
         }
         public async Task CreateVerificationSession(NpgsqlConnection conn, NpgsqlTransaction tx, int userId, string tokenHash, string purpose)
         {
@@ -270,5 +300,214 @@ namespace DeliveryAPI.Infrastructure.Repositories
 
             await cmd.ExecuteNonQueryAsync();
         }
+        public async Task<GetActiveVerificationSessionByTokenHashReadModel> GetActiveVerificationSessionByTokenHash(NpgsqlConnection conn, NpgsqlTransaction tx, string token, string purpose)
+        {
+            const string sql = """
+                SELECT
+                    verification_sessions_id,
+                    user_id
+                FROM verification_sessions
+                WHERE token_hash = @hash
+                  AND used = false
+                  AND expires_at > now()
+                  AND purpose = @purpose
+                Limit 1;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@hash", NpgsqlDbType.Text).Value = token;
+            cmd.Parameters.Add("@purpose", NpgsqlDbType.Varchar).Value = purpose;
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                return new GetActiveVerificationSessionByTokenHashReadModel
+                {
+                    VerificationSessionId = reader.GetInt32(0),
+                    UserId = reader.GetInt32(1),
+                };
+            }
+
+            return null;
+        }
+        public async Task SetUserPassword(NpgsqlConnection conn, NpgsqlTransaction tx, int userId, string passwordHash, string name, DateOnly birthday)
+        {
+            const string sql = """
+                UPDATE users
+                SET password_hash = @passwordHash,
+                    is_phone_verified = true,
+                    name = @name,
+                    birth_date = @birthday
+                WHERE user_id = @userId
+                    and password_hash is null
+                    and is_phone_verified = false;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@passwordHash", NpgsqlDbType.Text).Value = passwordHash;
+            cmd.Parameters.Add("@userId", NpgsqlDbType.Integer).Value = userId;
+            cmd.Parameters.Add("@name", NpgsqlDbType.Varchar).Value = name;
+            cmd.Parameters.Add("@birthday", NpgsqlDbType.Date).Value = birthday;
+
+            var affected = await cmd.ExecuteNonQueryAsync();
+
+            if (affected != 1)
+            {
+                throw new BusinessException(
+                    "PASSWORD_ALREADY_SET",
+                    "Password already set or phone already verified"
+                );
+            }
+
+        }
+        public async Task MarkVerificationSessionUsed(NpgsqlConnection conn, NpgsqlTransaction tx, int verificationSessionId)
+        {
+            const string sql = """
+                UPDATE verification_sessions
+                SET used = true
+                WHERE verification_sessions_id = @verificationSessionId
+                  AND used = false;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+            cmd.Parameters.Add("@verificationSessionId", NpgsqlDbType.Integer).Value = verificationSessionId;
+            var affected = await cmd.ExecuteNonQueryAsync();
+
+            if (affected != 1)
+            {
+                throw new BusinessException(
+                    "SESSION_ALREADY_USED",
+                    "Verification session already used or invalid"
+                );
+            }
+
+        }
+        public async Task InsertRefreshToken(NpgsqlConnection conn, NpgsqlTransaction tx, int SessionId, string refreshTokenHash)
+        {
+            const string sql = """
+                Insert Into refresh_tokens
+                    (session_id, token_hash, expires_at, revoked_at, created_at)
+                Values
+                    (@SessionId, @tokenHash, now() + interval '14 days', null, now());
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+            cmd.Parameters.Add("@SessionId", NpgsqlDbType.Integer).Value = SessionId;
+            cmd.Parameters.Add("@tokenHash", NpgsqlDbType.Text).Value = refreshTokenHash;
+           
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+        public async Task<int> InsertSession(NpgsqlConnection conn, NpgsqlTransaction tx, int userId, string? ip, string? userAgent)
+        {
+            const string sql = """
+                Insert Into sessions
+                    (user_id, ip_address, user_agent)
+                Values
+                    (@userId, @ip, @userAgent)
+                returning session_id;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+            cmd.Parameters.Add("@userId", NpgsqlDbType.Integer).Value = userId;
+            cmd.Parameters.Add("@ip", NpgsqlDbType.Varchar).Value = (object?)ip ?? DBNull.Value;
+            cmd.Parameters.Add("@userAgent", NpgsqlDbType.Varchar).Value = (object?)userAgent ?? DBNull.Value;
+
+            var result = await cmd.ExecuteScalarAsync();
+            if (result == null)
+                throw new BusinessException("SESSION_CREATE_FAILED", "Failed to create session");
+
+            return (int)result;
+
+
+        }
+        //internal async Task<int> GetActiveSessionByTokenHash(NpgsqlConnection conn, NpgsqlTransaction tx, int SessionId)
+        //{
+        //    const string sql = """
+        //        Select session_id
+        //        From sessions
+        //        Where 
+        //        """;
+        //}
+        public async Task<ActiveRefreshTokenResult?> GetActiveRefreshToken(NpgsqlConnection conn, NpgsqlTransaction tx, string hash)
+        {
+            const string sql = """
+                SELECT s.user_id, rt.refresh_token_id, rt.session_id
+                FROM refresh_tokens rt
+                JOIN sessions s on s.session_id = rt.session_id 
+                WHERE rt.token_hash = @hash
+                  AND rt.revoked_at IS NULL
+                  AND rt.expires_at > now()
+                LIMIT 1;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+            cmd.Parameters.Add("@hash", NpgsqlDbType.Text).Value = hash;
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                return new ActiveRefreshTokenResult
+                {
+                    UserId = reader.GetInt32(0),
+                    Id = reader.GetInt32(1),
+                    SessionId = reader.GetInt32(2)
+                };
+                
+            }
+
+            return null;
+        }
+        public async Task<int> RevokeRefreshToken(NpgsqlConnection conn, NpgsqlTransaction tx, int id)
+        {
+            const string sql = """
+                UPDATE refresh_tokens
+                SET revoked_at = now()
+                WHERE refresh_token_id = @id
+                  AND revoked_at IS NULL;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+            cmd.Parameters.Add("@id", NpgsqlDbType.Integer).Value = id;
+            
+            return await cmd.ExecuteNonQueryAsync();
+
+        }
+        public async Task<UserByMeResult?> GetUserById(NpgsqlConnection conn, NpgsqlTransaction tx, int userId)
+        {
+            const string sql = """
+                Select 
+                    u.user_id,
+                    u.phone_number,
+                    u.name
+                From users u
+                Where u.user_id = @userId
+                    and u.is_active = true
+                    and u.is_phone_verified = true
+                Limit 1;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+            cmd.Parameters.Add("@userId", NpgsqlDbType.Integer).Value = userId;
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                return new UserByMeResult
+                {
+                    UserId = reader.GetInt32(0),
+                    Phone = reader.GetString(1),
+                    Name = reader.GetString(2)
+                };
+            }
+
+            return null;
+        }
+
+        
     }
 }

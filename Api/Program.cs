@@ -1,10 +1,13 @@
+using System.Text;
 using DeliveryAPI.Api.Middleware;
 using DeliveryAPI.Application.FakeSmsSender;
 using DeliveryAPI.Application.Services;
 using DeliveryAPI.Application.Verification;
 using DeliveryAPI.Infrastructure.Database;
 using DeliveryAPI.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Connections;
+using Microsoft.IdentityModel.Tokens;
 
 namespace DeliveryAPI.Api
 {
@@ -60,9 +63,6 @@ namespace DeliveryAPI.Api
             builder.Services.AddScoped<IVerificationMessageBuilder, SmsVerificationMessageBuilder>();
             builder.Services.AddScoped<INotificationSender, FakeSmsSender>();
 
-
-           
-
             // Repositories
             builder.Services.AddScoped<AuthRepository>();
 
@@ -71,7 +71,30 @@ namespace DeliveryAPI.Api
             builder.Services.AddScoped<TransactionExecutor>();
 
 
+            var jwt = builder.Configuration.GetSection("Jwt");
 
+            builder.Services
+                .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+
+                        ValidIssuer = jwt["Issuer"],
+                        ValidAudience = jwt["Audience"],
+                        IssuerSigningKey = new SymmetricSecurityKey(
+                            Encoding.UTF8.GetBytes(jwt["Key"]!)
+                        )
+                    };
+                });
+
+          
+
+            builder.Services.AddAuthorization();
 
 
             builder.Logging.ClearProviders();
@@ -95,8 +118,8 @@ namespace DeliveryAPI.Api
 
             app.UseHttpsRedirection();
 
+            app.UseAuthentication();
             app.UseAuthorization();
-
 
             app.MapControllers();
 
