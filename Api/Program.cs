@@ -59,12 +59,20 @@ namespace DeliveryAPI.Api
             // Services
             builder.Services.AddScoped<AuthService>();
             builder.Services.AddScoped<JwtService>();
+            builder.Services.AddScoped<DeliveryService>();
+            builder.Services.AddScoped<AddressService>();
+            builder.Services.AddScoped<ProductService>();
+            builder.Services.AddScoped<CategoryService>();
             builder.Services.AddScoped<IVerificationCodeGenerator, NumericVerificationCodeGenerator>();
             builder.Services.AddScoped<IVerificationMessageBuilder, SmsVerificationMessageBuilder>();
             builder.Services.AddScoped<INotificationSender, FakeSmsSender>();
 
             // Repositories
             builder.Services.AddScoped<AuthRepository>();
+            builder.Services.AddScoped<DeliveryRepository>();
+            builder.Services.AddScoped<AddressRepository>();
+            builder.Services.AddScoped<ProductRepository>();
+            builder.Services.AddScoped<CategoryRepository>();
 
             // Database infra
             builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();

@@ -3,6 +3,7 @@ using System.Numerics;
 using System.Xml.Linq;
 using DeliveryAPI.Api.Middleware;
 using DeliveryAPI.Application.Enums.Auth;
+using DeliveryAPI.Application.Exeptions;
 using DeliveryAPI.Application.Models.Result;
 using DeliveryAPI.Infrastructure.Entity.ReadModel;
 using DeliveryAPI.Infrastructure.Entity.Record;

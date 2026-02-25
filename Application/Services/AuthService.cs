@@ -16,6 +16,7 @@ using System.Runtime.InteropServices;
 using DeliveryAPI.Application.Models.Result;
 using System.Globalization;
 using DeliveryAPI.Infrastructure.Entity.ReadModel;
+using DeliveryAPI.Application.Exeptions;
 
 namespace DeliveryAPI.Application.Services
 {

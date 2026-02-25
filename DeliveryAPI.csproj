@@ -14,9 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Api\Contracts\Response\" />
     <Folder Include="Application\Interfaces\" />
-    <Folder Include="Application\Exeptions\" />
   </ItemGroup>
 
 </Project>

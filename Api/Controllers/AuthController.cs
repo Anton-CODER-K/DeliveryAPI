@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity.Data;
 using System.Diagnostics.Contracts;
 using DeliveryAPI.Api.Middleware;
 using System.Security.Claims;
+using DeliveryAPI.Application.Exeptions;
 
 namespace DeliveryAPI.Api.Controllers
 {

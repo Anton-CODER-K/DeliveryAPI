@@ -1,0 +1,69 @@
+﻿using DeliveryAPI.Application.Exeptions;
+using System.Security.Claims;
+using DeliveryAPI.Application.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http.HttpResults;
+using DeliveryAPI.Application.Enums;
+
+namespace DeliveryAPI.Api.Controllers
+{
+    [ApiController]
+    [Route("/restaurant/deliveries")]
+    public class RestaurantController : Controller
+    {
+        private readonly DeliveryService _deliveryService;
+
+        public RestaurantController(DeliveryService deliveryService)
+        {
+            _deliveryService = deliveryService;
+        }
+
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> GetDelivery([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DeliveryStatus? status = DeliveryStatus.Created)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                throw new UnauthorizedException("UserId claim missing");
+            int userId = int.Parse(userIdClaim.Value);
+
+            var delivery = await _deliveryService.GetDeliveriesByRestaurantUserAsync(page, pageSize, status, userId);
+
+            return Ok(delivery);
+        }
+
+        [Authorize(Roles = "RestaurantUser")]
+        [HttpPut("{id}/confirm")]
+        public async Task<IActionResult> AcceptDelivery([FromRoute] int id)
+        {
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                throw new UnauthorizedException("UserId claim missing");
+            int userId = int.Parse(userIdClaim.Value);
+
+
+            await _deliveryService.AcceptDeliveryByRestaurantAsync(userId, id);
+
+            return Ok("Delivery Accepted");
+        }
+
+        [Authorize(Roles = "RestaurantUser")]
+        [HttpPut("{id}/cancel")]
+        public async Task<IActionResult> CancelDelivery([FromRoute] int id)
+        {
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                throw new UnauthorizedException("UserId claim missing");
+            int userId = int.Parse(userIdClaim.Value);
+
+
+            await _deliveryService.CancelDeliveryByRestaurantAsync(userId, id);
+
+            return Ok("Delivery Canceled");
+        }
+    }
+}

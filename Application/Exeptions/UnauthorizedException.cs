@@ -1,4 +1,4 @@
-﻿namespace DeliveryAPI.Api.Middleware
+﻿namespace DeliveryAPI.Application.Exeptions
 {
     public class UnauthorizedException : Exception
     {

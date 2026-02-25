@@ -1,21 +1,8 @@
 ﻿using System.Text.Json;
+using DeliveryAPI.Application.Exeptions;
 
 namespace DeliveryAPI.Api.Middleware
 {
-
-    public class BusinessException : Exception
-    {
-        public string Code { get; }
-
-        public BusinessException(string code, string message)
-            : base(message)
-        {
-            Code = code;
-        }
-    }
-
-    
-
     public class ExceptionMiddleware
     {
         private readonly RequestDelegate _next;
@@ -46,6 +33,15 @@ namespace DeliveryAPI.Api.Middleware
                 await context.Response.WriteAsJsonAsync(new
                 {
                     code = ex.Code,
+                    message = ex.Message
+                });
+            }
+            catch (ForbiddenException ex)
+            {
+                context.Response.StatusCode = 403;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    code = "FORBIDDEN",
                     message = ex.Message
                 });
             }
