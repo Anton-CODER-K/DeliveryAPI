@@ -486,5 +486,132 @@ namespace DeliveryAPI.Infrastructure.Repositories
 
             return await cmd.ExecuteNonQueryAsync();
         }
+
+        public async Task<int> InsertDeliveryConfirmations(
+             NpgsqlConnection conn,
+             NpgsqlTransaction tx,
+             int deliveryId,
+             int courierId,
+             ConfirmationRole role)
+        {
+            const string sql = """
+                INSERT INTO delivery_confirmations (delivery_id, user_id, role_name_snapshot)
+                SELECT d.delivery_id, @courierId, @role 
+                FROM delivery d
+                WHERE d.delivery_id = @deliveryId
+                  AND d.courier_user_id = @courierId
+                ON CONFLICT (delivery_id, user_id)
+                DO NOTHING;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer).Value = deliveryId;
+            cmd.Parameters.Add("@courierId", NpgsqlDbType.Integer).Value = courierId;
+            cmd.Parameters.Add("@role", NpgsqlDbType.Varchar).Value = role.ToString();
+
+            return await cmd.ExecuteNonQueryAsync();
+        }
+
+        public async Task<int> CountConfirmations(
+            NpgsqlConnection conn,
+            NpgsqlTransaction tx,
+            int deliveryId)
+        {
+            const string sql = """
+                SELECT COUNT(DISTINCT role_name_snapshot)
+                FROM delivery_confirmations
+                WHERE delivery_id = @deliveryId
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.AddWithValue("@deliveryId", deliveryId);
+
+            return Convert.ToInt32(await cmd.ExecuteScalarAsync());
+        }
+
+        public async Task UpdateDeliveryStatus(
+            NpgsqlConnection conn,
+            NpgsqlTransaction tx,
+            int deliveryId,
+            DeliveryStatus status)
+        {
+            const string sql = """
+                UPDATE delivery
+                SET status_delivery_id = @status
+                WHERE delivery_id = @deliveryId
+                AND (
+                    SELECT COUNT(DISTINCT role_name_snapshot)
+                    FROM delivery_confirmations
+                    WHERE delivery_id = @deliveryId
+                ) >= 2;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@status", NpgsqlDbType.Integer)
+                .Value = (int)status;
+
+            cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer)
+                .Value = deliveryId;
+
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        public async Task<int> UpdateDeliveryStatus(
+            NpgsqlConnection conn,
+            NpgsqlTransaction tx,
+            int deliveryId,
+            DeliveryStatus newStatus,
+            DeliveryStatus expectedStatus)
+        {
+            const string sql = """
+                UPDATE delivery
+                SET status_delivery_id = @newStatus
+                WHERE delivery_id = @deliveryId
+                AND status_delivery_id = @expectedStatus;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@newStatus", NpgsqlDbType.Integer)
+                .Value = (int)newStatus;
+
+            cmd.Parameters.Add("@expectedStatus", NpgsqlDbType.Integer)
+                .Value = (int)expectedStatus;
+
+            cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer)
+                .Value = deliveryId;
+
+            return await cmd.ExecuteNonQueryAsync();
+        }
+
+        public async Task<int> InsertDeliveryConfirmationsUser(
+             NpgsqlConnection conn,
+             NpgsqlTransaction tx,
+             int deliveryId,
+             int userId,
+             ConfirmationRole role)
+        {
+            const string sql = """
+                INSERT INTO delivery_confirmations (delivery_id, user_id, role_name_snapshot)
+                SELECT d.delivery_id, @userId, @role 
+                FROM delivery d
+                WHERE d.delivery_id = @deliveryId
+                  AND d.user_id = @userId
+                ON CONFLICT (delivery_id, user_id)
+                DO NOTHING;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer).Value = deliveryId;
+            cmd.Parameters.Add("@userId", NpgsqlDbType.Integer).Value = userId;
+            cmd.Parameters.Add("@role", NpgsqlDbType.Varchar).Value = role.ToString();
+
+            return await cmd.ExecuteNonQueryAsync();
+        }
+
     }
 }

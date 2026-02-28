@@ -51,6 +51,18 @@ namespace DeliveryAPI.Api.Controllers
             var result = await _deliveryService.GetDeliveriesByUserIdAsync(userId);
             return Ok(result);
         }
+
+        [Authorize]
+        [HttpPut("{id}/accepted")]
+        public async Task<IActionResult> AcceptDeliveryByUser([FromRoute] int id)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                throw new UnauthorizedException("UserId claim missing");
+            int userId = int.Parse(userIdClaim.Value);
+            await _deliveryService.AcceptDeliveryByUserAsync(id, userId);
+            return Ok("Accepted Delivery");
+        }
     }
 }
 

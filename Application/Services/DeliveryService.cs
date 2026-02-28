@@ -251,6 +251,52 @@ namespace DeliveryAPI.Application.Services
             });
         }
 
+        public async Task ConfirmationsDeliveryByCourierAsync(int deliveryId, int courierId)
+        {
+            await _tx.ExecuteAsync(async (conn, tx) =>
+            {
+                int rows = await _deliveryRepo.InsertDeliveryConfirmations(
+                    conn, tx,
+                    deliveryId,
+                    courierId,
+                    ConfirmationRole.Courier);
+
+                if (rows == 0)
+                    throw new BusinessException("ALREADY_CONFIRMED", "Alredy confirmed");
+
+                
+                await _deliveryRepo.UpdateDeliveryStatus(
+                    conn, tx,
+                    deliveryId,
+                    DeliveryStatus.Delivered);
+                
+            });
+        }
+
+        public async Task AcceptDeliveryByUserAsync(int deliveryId, int userId)
+        {
+            await _tx.ExecuteAsync(async (conn, tx) =>
+            {
+                int rows = await _deliveryRepo.InsertDeliveryConfirmationsUser(
+                    conn, tx,
+                    deliveryId,
+                    userId,
+                    ConfirmationRole.Courier);
+
+                if (rows == 0)
+                    throw new BusinessException("ERROR", "Error");
+
+
+                rows = await _deliveryRepo.UpdateDeliveryStatus(
+                    conn, tx,
+                    deliveryId,
+                    DeliveryStatus.Delivered,
+                    DeliveryStatus.PickedUp);
+
+                if (rows == 0)
+                    throw new BusinessException("INVALID_STATUS", "Invalid status");
+            });
+        }
         private decimal CalculateDeliveryFee(int weightGrams)
         {
             if (weightGrams <= 2500) return 79;
@@ -260,6 +306,6 @@ namespace DeliveryAPI.Application.Services
             throw new BusinessException("TOO_HEAVY", "Maximum weight is 10kg");
         }
 
-       
+        
     }
 }

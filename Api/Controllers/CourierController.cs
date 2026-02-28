@@ -56,5 +56,20 @@ namespace DeliveryAPI.Api.Controllers
 
             return Ok("PickedUp Delivery");
         }
+
+        [Authorize(Roles = "Courier")]
+        [HttpPut("{id}/confirmations")]
+        public async Task<IActionResult> DeliveryConfirmationsByCourier([FromRoute] int id)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                throw new UnauthorizedException("UserId claim missing");
+
+            int userId = int.Parse(userIdClaim.Value);
+
+            await _deliveryService.ConfirmationsDeliveryByCourierAsync(id, userId);
+
+            return Ok("PickedUp Delivery");
+        }
     }
 }
