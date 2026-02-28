@@ -8,6 +8,8 @@ using DeliveryAPI.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.IdentityModel.Tokens;
+using Serilog.Sinks.Seq;
+using Serilog;
 
 namespace DeliveryAPI.Api
 {
@@ -15,7 +17,18 @@ namespace DeliveryAPI.Api
     {
         public static void Main(string[] args)
         {
+            Log.Logger = new LoggerConfiguration()
+                 .MinimumLevel.Information()
+                 .Enrich.FromLogContext()
+                 .WriteTo.Console()
+                 .WriteTo.File("Logs/log-.txt", rollingInterval: RollingInterval.Day)
+                 .WriteTo.Seq("http://localhost:5341")
+                .CreateLogger();
+
+
             var builder = WebApplication.CreateBuilder(args);
+
+            builder.Host.UseSerilog();
 
             // Add services to the container.
 

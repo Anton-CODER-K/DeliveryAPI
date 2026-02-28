@@ -15,14 +15,16 @@ namespace DeliveryAPI.Application.Services
         private readonly DeliveryRepository _deliveryRepo;
         private readonly AddressRepository _addressRepo;
         private readonly ProductRepository _productRepo;
-        
+        private readonly ILogger<DeliveryService> _logger;
 
-        public DeliveryService(TransactionExecutor tx, DeliveryRepository deliveryRepository, AddressRepository addressRepository, ProductRepository productRepo)
+
+        public DeliveryService(TransactionExecutor tx, DeliveryRepository deliveryRepository, AddressRepository addressRepository, ProductRepository productRepo, ILogger<DeliveryService> logger)
         {
             _tx = tx;
             _deliveryRepo = deliveryRepository;
             _addressRepo = addressRepository;
             _productRepo = productRepo;
+            _logger = logger;
         }
 
 
@@ -33,6 +35,7 @@ namespace DeliveryAPI.Application.Services
 
             if (input.PaymentMethodId < 1 && input.PaymentMethodId > 2)
                 throw new BusinessException("INVALID_PAYMENT_METHOD", "Invalid payment method");
+
 
             await _tx.ExecuteAsync(async (conn, tx) =>
             {
@@ -115,6 +118,9 @@ namespace DeliveryAPI.Application.Services
                 result = deliveryId;
             });
 
+
+            _logger.LogInformation("User {userId} create delivery {deliveryId}", input.UserId, result);
+
             return result;
         }
 
@@ -151,6 +157,7 @@ namespace DeliveryAPI.Application.Services
 
                 await _deliveryRepo.UpdateStatus(conn, tx, deliveryId,  DeliveryStatus.RestaurantConfirmed);
 
+                _logger.LogInformation("User {userId} by Restaurant {restaurantId} accept delivery {deliveryId}", userId, restaurantId, deliveryId);
             });
         }
 
@@ -176,6 +183,7 @@ namespace DeliveryAPI.Application.Services
 
                 await _deliveryRepo.UpdateStatus(conn, tx, deliveryId, DeliveryStatus.Canceled);
 
+                _logger.LogInformation("User {userId} by Restaurant {restaurantId} accept delivery {deliveryId}", userId, restaurantId, deliveryId);
             });
         }
 
@@ -232,6 +240,8 @@ namespace DeliveryAPI.Application.Services
 
                 await _deliveryRepo.InsertDeliveryAssignments(conn, tx, deliveryId, userId);
             });
+
+            _logger.LogInformation("Courier {userId} accept delivery {deliveryId}", userId, deliveryId);
         }
 
         public async Task PickedUpDeliveryByCourierAsync(int deliveryId, int userId)
@@ -249,6 +259,8 @@ namespace DeliveryAPI.Application.Services
                     throw new BusinessException("DELIVERY_STATUS_NOT_CHANGED",
                         "Delivery cannot be picked up");
             });
+
+            _logger.LogInformation("Courier {userId} picked up delivery {deliveryId}", userId, deliveryId);
         }
 
         public async Task ConfirmationsDeliveryByCourierAsync(int deliveryId, int courierId)
@@ -271,6 +283,8 @@ namespace DeliveryAPI.Application.Services
                     DeliveryStatus.Delivered);
                 
             });
+
+            _logger.LogInformation("Courier {userId} confirmed delivery {deliveryId}", courierId, deliveryId);
         }
 
         public async Task AcceptDeliveryByUserAsync(int deliveryId, int userId)
@@ -296,6 +310,8 @@ namespace DeliveryAPI.Application.Services
                 if (rows == 0)
                     throw new BusinessException("INVALID_STATUS", "Invalid status");
             });
+
+            _logger.LogInformation("User {userId} confirmed delivery {deliveryId}", userId, deliveryId);
         }
         private decimal CalculateDeliveryFee(int weightGrams)
         {

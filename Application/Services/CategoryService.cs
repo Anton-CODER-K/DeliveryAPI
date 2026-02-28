@@ -8,11 +8,13 @@ namespace DeliveryAPI.Application.Services
     {
         private readonly TransactionExecutor _tx;
         private readonly CategoryRepository _categoryRepository;
+        private readonly ILogger<CategoryService> _logger;
 
-        public CategoryService(TransactionExecutor tx, CategoryRepository categoryRepository)
+        public CategoryService(TransactionExecutor tx, CategoryRepository categoryRepository, ILogger<CategoryService> logger)
         {
             _tx = tx;
             _categoryRepository = categoryRepository;
+            _logger = logger;
         }
 
         public async Task<List<CategoryGet>> GetCategoriesAsync()
@@ -28,7 +30,7 @@ namespace DeliveryAPI.Application.Services
             return categories;
         }
 
-        public async Task<int> CreateCategoryAsync(string name)
+        public async Task<int> CreateCategoryAsync(string name, int userId)
         {
             int result = 0;
 
@@ -38,9 +40,11 @@ namespace DeliveryAPI.Application.Services
             });
 
             return result;
+
+            _logger.LogInformation("User {userId} create delivery {deliveryId}", userId, result);
         }
 
-        public async Task UpdateCategoryAsync(int categoryId, string name)
+        public async Task UpdateCategoryAsync(int categoryId, string name, int userId)
         {
             await _tx.ExecuteAsync(async (conn, tx) =>
             {
