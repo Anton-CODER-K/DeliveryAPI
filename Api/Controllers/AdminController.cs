@@ -38,6 +38,16 @@ namespace DeliveryAPI.Api.Controllers
             return Ok(result);
         }
 
+        [Authorize(Roles = "Admin")]
+        [HttpGet("delivery")]
+        public async Task<IActionResult> GetDeliveries([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DeliveryStatus? status = null)
+        {
+            var result = await _deliveryService.GetDeliveriesAsync(page, pageSize, status);
+
+            return Ok(result);
+        }
+
+
 
 
         [Authorize(Roles = "Admin")]

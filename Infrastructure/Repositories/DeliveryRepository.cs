@@ -348,6 +348,90 @@ namespace DeliveryAPI.Infrastructure.Repositories
 
             return deliveries.Values.ToList();
         }
+        public async Task<List<DeliveryAdminResult>> GetDeliveriesAdmin(NpgsqlConnection conn, NpgsqlTransaction tx, int offset, int pageSize, DeliveryStatus? status)
+        {
+            var deliveries = new Dictionary<int, DeliveryAdminResult>();
+
+
+            const string sql = """
+                WITH deliveries_page AS (
+                    SELECT *
+                    FROM delivery
+                    WHERE (@status IS NULL OR status_delivery_id = @status)
+                    ORDER BY created_at DESC
+                    LIMIT @limit OFFSET @offset
+                )
+
+                SELECT
+                    d.delivery_id,
+                    d.user_id,
+                    d.courier_user_id,
+                    d.restaurant_id,
+                    sd.name,
+                    pm.name,
+                    d.total_price,
+                    d.subtotal_amount,
+                    d.delivery_fee,
+                    d.commission_amount,
+                    d.commission_percent,
+                    d.total_weight_grams,
+                    d.created_at,
+                    di.product_name,
+                    di.quantity,
+                    di.total_line_amount
+                FROM deliveries_page d
+                JOIN delivery_items di ON di.delivery_id = d.delivery_id
+                JOIN status_delivery sd ON sd.status_delivery_id = d.status_delivery_id
+                JOIN payment_method pm ON pm.payment_method_id = d.payment_method_id
+                ORDER BY d.created_at DESC;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@limit", NpgsqlDbType.Integer).Value = pageSize;
+            cmd.Parameters.Add("@offset", NpgsqlDbType.Integer).Value = offset;
+            cmd.Parameters.Add("@status", NpgsqlDbType.Integer).Value = status is null ? DBNull.Value : (int)status;
+
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            while (reader.Read())
+            {
+                int deliveryId = reader.GetInt32(0);
+
+                if (!deliveries.ContainsKey(deliveryId))
+                {
+                    deliveries[deliveryId] = new DeliveryAdminResult
+                    {
+                        DeliveryId = deliveryId,
+                        UserId = reader.GetInt32(1),
+                        CourierId = reader.IsDBNull(2) ? null : reader.GetInt32(2),
+                        RestaurantId = reader.GetInt32(3),
+                        StatusDelivery = reader.GetString(4),
+                        PaymentMethod = reader.GetString(5),
+                        TotalPrice = reader.GetDecimal(6),
+                        ProductPrice = reader.GetDecimal(7),
+                        DeliveryFee = reader.GetDecimal(8),
+                        CommissionsAmount = reader.GetDecimal(9),
+                        CommissionPercent = reader.GetDecimal(10),
+                        Total_weight_grams = reader.GetInt32(11),
+                        CreatedAt = reader.GetDateTime(12),
+                        Items = new List<DeliveryUserItem>()
+                    };
+                }
+
+                deliveries[deliveryId].Items.Add(new DeliveryUserItem
+                {
+                    ProductName = reader.GetString(13),
+                    Quantity = reader.GetInt32(14),
+                    TotalLineAmount = reader.GetDecimal(15)
+                });
+
+            }
+
+            return deliveries.Values.ToList();
+        }
+
 
         public async Task<int> AcceptedDeliveryByCourier(NpgsqlConnection conn, NpgsqlTransaction tx, int deliveryId, int courierId, DeliveryStatus courierAssigned, DeliveryStatus restaurantConfirmed)
         {

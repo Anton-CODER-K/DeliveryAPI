@@ -6,6 +6,7 @@ using DeliveryAPI.Application.Models.Input;
 using DeliveryAPI.Application.Models.Result;
 using DeliveryAPI.Infrastructure.Database;
 using DeliveryAPI.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace DeliveryAPI.Application.Services
 {
@@ -313,6 +314,24 @@ namespace DeliveryAPI.Application.Services
 
             _logger.LogInformation("User {UserId} confirmed delivery {DeliveryId}", userId, deliveryId);
         }
+        public async Task<List<DeliveryAdminResult>> GetDeliveriesAsync(int page, int pageSize, DeliveryStatus? deliveryStatus)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+            if (pageSize > 50) pageSize = 50;
+
+            int offset = (page - 1) * pageSize;
+
+            List<DeliveryAdminResult> deliveries = new List<DeliveryAdminResult>();
+
+            await _tx.ExecuteAsync(async (conn, tx) =>
+            {
+                deliveries = await _deliveryRepo.GetDeliveriesAdmin(conn, tx, offset, pageSize, deliveryStatus);
+            });
+
+            return deliveries;
+        }
+
         private decimal CalculateDeliveryFee(int weightGrams)
         {
             if (weightGrams <= 2500) return 79;
@@ -322,6 +341,5 @@ namespace DeliveryAPI.Application.Services
             throw new BusinessException("TOO_HEAVY", "Maximum weight is 10kg");
         }
 
-        
     }
 }
