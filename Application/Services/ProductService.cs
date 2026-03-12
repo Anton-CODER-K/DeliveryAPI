@@ -65,6 +65,23 @@ namespace DeliveryAPI.Application.Services
             return products;
         }
 
+        public async Task<List<string>> GetRestaurantsAsync(int page, int pageSize, int? categoryId)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+            if (pageSize > 50) pageSize = 50;
+
+            int offset = (page - 1) * pageSize;
+
+            List<string> restaurants = new List<string>();
+
+            await _tx.ExecuteAsync(async (conn, tx) =>
+            {
+                restaurants = await _productRepo.GetRestaurants(conn, tx, offset, pageSize, categoryId);
+            });
+
+            return restaurants;
+        }
         public async Task DeleteProductAsync(int productId, int userId, string role)
         {
             await _tx.ExecuteAsync(async (conn, tx) =>
@@ -128,6 +145,6 @@ namespace DeliveryAPI.Application.Services
             });
         }
 
-        
+       
     }
 }

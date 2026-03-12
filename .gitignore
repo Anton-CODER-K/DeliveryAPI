@@ -7,3 +7,5 @@ appsettings.Production.json
 .vs/
 bin/
 obj/
+
+Logs/

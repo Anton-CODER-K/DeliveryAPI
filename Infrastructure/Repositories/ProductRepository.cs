@@ -143,7 +143,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
             var result = await cmd.ExecuteScalarAsync();
 
             if (result == null)
-                return null; // або throw BusinessException
+                return null; 
 
             int value = (int)result;
 
@@ -278,6 +278,45 @@ namespace DeliveryAPI.Infrastructure.Repositories
             return result;
         }
 
-     
+        public async Task<List<string>> GetRestaurants(
+            NpgsqlConnection conn,
+            NpgsqlTransaction tx,
+            int offset,
+            int pageSize,
+            int? categoryId)
+        {
+            const string sql = """
+                SELECT r.name
+                FROM restaurants r
+                WHERE
+                    @categoryId IS NULL
+                    OR EXISTS (
+                        SELECT 1
+                        FROM product p
+                        WHERE p.restaurant_id = r.restaurant_id
+                        AND p.category_id = @categoryId
+                    )
+                ORDER BY r.restaurant_id DESC
+                LIMIT @limit OFFSET @offset;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@limit", NpgsqlTypes.NpgsqlDbType.Integer).Value = pageSize;
+            cmd.Parameters.Add("@offset", NpgsqlTypes.NpgsqlDbType.Integer).Value = offset;
+            cmd.Parameters.Add("@categoryId", NpgsqlTypes.NpgsqlDbType.Integer)
+                .Value = (object?)categoryId ?? DBNull.Value;
+
+            var list = new List<string>();
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                list.Add(reader.GetString(0));
+            }
+
+            return list;
+        }
     }
 }

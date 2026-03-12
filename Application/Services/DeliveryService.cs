@@ -119,7 +119,7 @@ namespace DeliveryAPI.Application.Services
             });
 
 
-            _logger.LogInformation("User {userId} create delivery {deliveryId}", input.UserId, result);
+            _logger.LogInformation("User {UserId} create delivery {DeliveryId}", input.UserId, result);
 
             return result;
         }
@@ -157,7 +157,7 @@ namespace DeliveryAPI.Application.Services
 
                 await _deliveryRepo.UpdateStatus(conn, tx, deliveryId,  DeliveryStatus.RestaurantConfirmed);
 
-                _logger.LogInformation("User {userId} by Restaurant {restaurantId} accept delivery {deliveryId}", userId, restaurantId, deliveryId);
+                _logger.LogInformation("User {UserId} by Restaurant {RestaurantId} accept delivery {DeliveryId}", userId, restaurantId, deliveryId);
             });
         }
 
@@ -183,7 +183,7 @@ namespace DeliveryAPI.Application.Services
 
                 await _deliveryRepo.UpdateStatus(conn, tx, deliveryId, DeliveryStatus.Canceled);
 
-                _logger.LogInformation("User {userId} by Restaurant {restaurantId} accept delivery {deliveryId}", userId, restaurantId, deliveryId);
+                _logger.LogInformation("User {UserId} by Restaurant {RestaurantId} accept delivery {DeliveryId}", userId, restaurantId, deliveryId);
             });
         }
 
@@ -241,7 +241,7 @@ namespace DeliveryAPI.Application.Services
                 await _deliveryRepo.InsertDeliveryAssignments(conn, tx, deliveryId, userId);
             });
 
-            _logger.LogInformation("Courier {userId} accept delivery {deliveryId}", userId, deliveryId);
+            _logger.LogInformation("Courier {UserId} accept delivery {DeliveryId}", userId, deliveryId);
         }
 
         public async Task PickedUpDeliveryByCourierAsync(int deliveryId, int userId)
@@ -260,7 +260,7 @@ namespace DeliveryAPI.Application.Services
                         "Delivery cannot be picked up");
             });
 
-            _logger.LogInformation("Courier {userId} picked up delivery {deliveryId}", userId, deliveryId);
+            _logger.LogInformation("Courier {UserId} picked up delivery {DeliveryId}", userId, deliveryId);
         }
 
         public async Task ConfirmationsDeliveryByCourierAsync(int deliveryId, int courierId)
@@ -284,7 +284,7 @@ namespace DeliveryAPI.Application.Services
                 
             });
 
-            _logger.LogInformation("Courier {userId} confirmed delivery {deliveryId}", courierId, deliveryId);
+            _logger.LogInformation("Courier {UserId} confirmed delivery {DeliveryId}", courierId, deliveryId);
         }
 
         public async Task AcceptDeliveryByUserAsync(int deliveryId, int userId)
@@ -311,7 +311,7 @@ namespace DeliveryAPI.Application.Services
                     throw new BusinessException("INVALID_STATUS", "Invalid status");
             });
 
-            _logger.LogInformation("User {userId} confirmed delivery {deliveryId}", userId, deliveryId);
+            _logger.LogInformation("User {UserId} confirmed delivery {DeliveryId}", userId, deliveryId);
         }
         private decimal CalculateDeliveryFee(int weightGrams)
         {

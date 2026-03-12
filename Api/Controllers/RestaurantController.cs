@@ -10,18 +10,20 @@ using DeliveryAPI.Application.Enums;
 namespace DeliveryAPI.Api.Controllers
 {
     [ApiController]
-    [Route("/restaurant/deliveries")]
+    [Route("/restaurant")]
     public class RestaurantController : Controller
     {
         private readonly DeliveryService _deliveryService;
+        private readonly ProductService _productService;
 
-        public RestaurantController(DeliveryService deliveryService)
+        public RestaurantController(DeliveryService deliveryService, ProductService productService)
         {
             _deliveryService = deliveryService;
+            _productService = productService;
         }
 
         [Authorize]
-        [HttpGet]
+        [HttpGet("deliveries")]
         public async Task<IActionResult> GetDelivery([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DeliveryStatus? status = DeliveryStatus.Created)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -35,7 +37,7 @@ namespace DeliveryAPI.Api.Controllers
         }
 
         [Authorize(Roles = "RestaurantUser")]
-        [HttpPut("{id}/confirm")]
+        [HttpPut("deliveries/{id}/confirm")]
         public async Task<IActionResult> AcceptDelivery([FromRoute] int id)
         {
 
@@ -51,7 +53,7 @@ namespace DeliveryAPI.Api.Controllers
         }
 
         [Authorize(Roles = "RestaurantUser")]
-        [HttpPut("{id}/cancel")]
+        [HttpPut("deliveries/{id}/cancel")]
         public async Task<IActionResult> CancelDelivery([FromRoute] int id)
         {
 
@@ -65,5 +67,15 @@ namespace DeliveryAPI.Api.Controllers
 
             return Ok("Delivery Canceled");
         }
+
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> GetReastaurant([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery]int? categoryId = null)
+        {
+            var result = await _productService.GetRestaurantsAsync(page, pageSize, categoryId);
+
+            return Ok(result);
+        }
+
     }
 }

@@ -28,8 +28,9 @@ namespace DeliveryAPI.Application.Services
         private readonly IVerificationCodeGenerator _codeGenerator;
         private readonly IVerificationMessageBuilder _messageBuilder;
         private readonly INotificationSender _notificationSender;
+        private readonly ILogger<DeliveryService> _logger;
 
-        public AuthService(JwtService jwtService, AuthRepository AuthRepo, TransactionExecutor transactionExecutor, IVerificationCodeGenerator codeGenerator, IVerificationMessageBuilder messageBuilder, INotificationSender notificationSender)
+        public AuthService(JwtService jwtService, AuthRepository AuthRepo, TransactionExecutor transactionExecutor, IVerificationCodeGenerator codeGenerator, IVerificationMessageBuilder messageBuilder, INotificationSender notificationSender, ILogger<DeliveryService> logger)
         {
             _jwtService = jwtService;
             _authRepo = AuthRepo;
@@ -37,6 +38,7 @@ namespace DeliveryAPI.Application.Services
             _codeGenerator = codeGenerator;
             _messageBuilder = messageBuilder;
             _notificationSender = notificationSender;
+            _logger = logger;
         }
 
         public async Task StartAsync(string rawPhone)
@@ -100,6 +102,9 @@ namespace DeliveryAPI.Application.Services
 
             if (shouldSendSms)
                 await _notificationSender.SendAsync(phone, message);
+
+            _logger.LogInformation("Number {NumberPhone} Created", phone);
+
         }
 
         public async Task<string> VerifyAsync(string rawPhone, string code)
@@ -141,6 +146,9 @@ namespace DeliveryAPI.Application.Services
                 await _authRepo.CreateVerificationSession(conn, tx, activeCode.UserId, tokenHash, purposeString);         
             });
 
+            _logger.LogInformation("Number {NumberPhone} is verifed code", phone);
+
+
             return token;
             
         }
@@ -165,6 +173,7 @@ namespace DeliveryAPI.Application.Services
                 throw new BusinessException("INVALID_NAME", "Name must be at least 3 characters long");
 
             var tokenHash = HashToken(token);
+            int userId = 0;
 
             await _tx.ExecuteAsync(async (conn, tx) =>
             {
@@ -175,6 +184,8 @@ namespace DeliveryAPI.Application.Services
 
                 if (session == null)
                     throw new UnauthorizedException("Invalid refresh token");
+
+                userId = session.UserId;
 
                 await _authRepo.SetUserPassword(conn, tx, session.UserId, HashPassword(password), name, birthday);
 
@@ -191,6 +202,9 @@ namespace DeliveryAPI.Application.Services
                 
             });
 
+            _logger.LogInformation("User {UserId} set password", userId);
+
+
             return new TokensResult
             {
                 accessToken = accessToken,
@@ -203,6 +217,7 @@ namespace DeliveryAPI.Application.Services
             var hash = HashToken(refreshToken);
             string access = String.Empty;
             string newRefresh = String.Empty;
+            int userId = 0;
 
             await _tx.ExecuteAsync(async (conn, tx) =>
             {
@@ -210,6 +225,8 @@ namespace DeliveryAPI.Application.Services
 
                 if (token == null)
                     throw new UnauthorizedException();
+
+                userId = token.UserId;
 
                 var affectedRevokeToken = await _authRepo.RevokeRefreshToken(conn, tx, token.Id);
 
@@ -227,6 +244,9 @@ namespace DeliveryAPI.Application.Services
                 await _authRepo.InsertRefreshToken(conn, tx, token.SessionId, newHash);
                 
             });
+
+            _logger.LogInformation("User {UserId} refresh token", userId);
+
             return new TokensResult
             {
                 accessToken = access,
@@ -265,6 +285,8 @@ namespace DeliveryAPI.Application.Services
                 var sessionId = await _authRepo.InsertSession(conn, tx, user.UserId, ip, userAgent);
                 await _authRepo.InsertRefreshToken(conn, tx, sessionId ,refreshTokenHash);
             });
+
+            _logger.LogInformation("User {UserId} is login", user.UserId);
 
             return new TokensResult
             {

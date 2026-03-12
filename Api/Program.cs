@@ -76,6 +76,7 @@ namespace DeliveryAPI.Api
             builder.Services.AddScoped<AddressService>();
             builder.Services.AddScoped<ProductService>();
             builder.Services.AddScoped<CategoryService>();
+            builder.Services.AddScoped<UserService>();
             builder.Services.AddScoped<IVerificationCodeGenerator, NumericVerificationCodeGenerator>();
             builder.Services.AddScoped<IVerificationMessageBuilder, SmsVerificationMessageBuilder>();
             builder.Services.AddScoped<INotificationSender, FakeSmsSender>();
@@ -84,6 +85,7 @@ namespace DeliveryAPI.Api
             builder.Services.AddScoped<AuthRepository>();
             builder.Services.AddScoped<DeliveryRepository>();
             builder.Services.AddScoped<AddressRepository>();
+            builder.Services.AddScoped<UserRepository>();
             builder.Services.AddScoped<ProductRepository>();
             builder.Services.AddScoped<CategoryRepository>();
 
