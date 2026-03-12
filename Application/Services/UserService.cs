@@ -24,7 +24,7 @@ namespace DeliveryAPI.Application.Services
             if (pageSize < 1) pageSize = 10;
             if (pageSize > 50) pageSize = 50;
 
-            if (!string.IsNullOrWhiteSpace(query) && query.Length <= 3)
+            if (!string.IsNullOrWhiteSpace(query) && query.Length <= 2)
             {
                 query = null;
             }
