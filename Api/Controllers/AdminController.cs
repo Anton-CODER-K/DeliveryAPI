@@ -25,7 +25,7 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpGet("users")]
-        public async Task<IActionResult> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        public async Task<IActionResult> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] ConfirmationRole? role = null, [FromQuery] string? search = null)
         {
 
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -33,7 +33,7 @@ namespace DeliveryAPI.Api.Controllers
                 throw new UnauthorizedException("UserId claim missing");
             int userId = int.Parse(userIdClaim.Value);
 
-            var result = await _userService.GetUsers(page, pageSize);
+            var result = await _userService.GetUsers(page, pageSize, role, search);
 
             return Ok(result);
         }

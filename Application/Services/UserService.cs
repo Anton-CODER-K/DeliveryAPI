@@ -1,4 +1,5 @@
 ﻿using DeliveryAPI.Api.Contracts.Response;
+using DeliveryAPI.Application.Enums;
 using DeliveryAPI.Application.Models.Result;
 using DeliveryAPI.Infrastructure.Database;
 using DeliveryAPI.Infrastructure.Repositories;
@@ -17,11 +18,16 @@ namespace DeliveryAPI.Application.Services
             _userRepo = userRepo;
         }
 
-        public async Task<List<Users>> GetUsers(int page, int pageSize)
+        public async Task<List<Users>> GetUsers(int page, int pageSize, ConfirmationRole? role, string? query)
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
             if (pageSize > 50) pageSize = 50;
+
+            if (!string.IsNullOrWhiteSpace(query) && query.Length <= 3)
+            {
+                query = null;
+            }
 
             int offset = (page - 1) * pageSize;
 
@@ -29,11 +35,12 @@ namespace DeliveryAPI.Application.Services
 
             await _tx.ExecuteAsync(async (conn, tx) =>
             {
-                users = await _userRepo.GetUsers(conn, tx, offset, pageSize);
+                users = await _userRepo.GetUsers(conn, tx, offset, pageSize, role, query);
             });
 
             return users;
         }
+
 
 
     }
