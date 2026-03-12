@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Connections;
 using Microsoft.IdentityModel.Tokens;
 using Serilog.Sinks.Seq;
 using Serilog;
+using Microsoft.AspNetCore.HttpOverrides;
 
 namespace DeliveryAPI.Api
 {
@@ -139,6 +140,17 @@ namespace DeliveryAPI.Api
 
 
             app.UseHttpsRedirection();
+
+            var forwardOptions = new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            };
+
+            forwardOptions.KnownNetworks.Clear();
+            forwardOptions.KnownProxies.Clear();
+
+            app.UseForwardedHeaders(forwardOptions);
+
 
             app.UseAuthentication();
             app.UseAuthorization();
