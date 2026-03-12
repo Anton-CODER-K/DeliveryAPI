@@ -136,7 +136,7 @@ namespace DeliveryAPI.Api
             app.UseSwaggerUI();
             
 
-            app.UseMiddleware<ExceptionMiddleware>();
+            
 
 
             app.UseHttpsRedirection();
@@ -151,6 +151,9 @@ namespace DeliveryAPI.Api
 
             app.UseForwardedHeaders(forwardOptions);
 
+            app.UseMiddleware<ExceptionMiddleware>();
+
+            app.UseHttpsRedirection();
 
             app.UseAuthentication();
             app.UseAuthorization();
