@@ -47,6 +47,14 @@ namespace DeliveryAPI.Api.Controllers
             return Ok(result);
         }
 
+        [Authorize(Roles = "Admin")]
+        [HttpGet("delivery/{id}/address")]
+        public async Task<IActionResult> GetDeliveriesAddress([FromRoute] int id)
+        {
+            var result = await _deliveryService.GetDeliveryAddressAsync(id);
+
+            return Ok(result);
+        }
 
 
 

@@ -697,5 +697,36 @@ namespace DeliveryAPI.Infrastructure.Repositories
             return await cmd.ExecuteNonQueryAsync();
         }
 
+        public async Task<AddressDeliveryIdResponse?> GetDeliveryAddress(NpgsqlConnection conn, NpgsqlTransaction tx, int deliveryId)
+        {
+            const string sql = """
+                Select latitude, longitude, house, apartment, entrance, floor, comment
+                From delivery_address_snapshot
+                Where delivery_id = @deliveryId
+                Limit 1
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer).Value = deliveryId;
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            if (reader.Read())
+            {
+                return new AddressDeliveryIdResponse
+                {
+                    latitude = reader.GetDecimal(0),
+                    longitude = reader.GetDecimal(1),
+                    house = reader.GetString(2),
+                    apartment = reader.IsDBNull(3) ? null : reader.GetString(3),
+                    entrance = reader.IsDBNull(4) ? null : reader.GetString(4),
+                    floor = reader.IsDBNull(5) ? null : reader.GetString(5),
+                    comment = reader.IsDBNull(6) ? null : reader.GetString(6)
+                };
+            }
+
+            return null;
+        }
     }
 }

@@ -332,6 +332,17 @@ namespace DeliveryAPI.Application.Services
             return deliveries;
         }
 
+        internal async Task<AddressDeliveryIdResponse?> GetDeliveryAddressAsync(int deliveryId)
+        {
+            AddressDeliveryIdResponse? result = null;
+
+            await _tx.ExecuteAsync(async (conn, tx) =>
+            {
+                result = await _deliveryRepo.GetDeliveryAddress(conn, tx, deliveryId);
+            });
+
+            return result;
+        }
         private decimal CalculateDeliveryFee(int weightGrams)
         {
             if (weightGrams <= 2500) return 79;
@@ -341,5 +352,6 @@ namespace DeliveryAPI.Application.Services
             throw new BusinessException("TOO_HEAVY", "Maximum weight is 10kg");
         }
 
+        
     }
 }
