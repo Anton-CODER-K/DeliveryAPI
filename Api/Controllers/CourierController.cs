@@ -28,6 +28,22 @@ namespace DeliveryAPI.Api.Controllers
         }
 
         [Authorize(Roles = "Courier")]
+        [HttpGet("/my")]
+        public async Task<IActionResult> GetDeliveryMyActive([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DeliveryStatus? deliveryStatus = null)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                throw new UnauthorizedException("UserId claim missing");
+
+            int userId = int.Parse(userIdClaim.Value);
+
+            var delivery = await _deliveryService.GetDeliveriesByCourierAsync(page, pageSize, userId, deliveryStatus);
+
+            return Ok(delivery);
+        }
+
+
+        [Authorize(Roles = "Courier")]
         [HttpPut("{id}/accepted")]
         public async Task<IActionResult> DeliveryAcceptedByCourier([FromRoute] int id)
         {

@@ -22,7 +22,7 @@ namespace DeliveryAPI.Api.Controllers
             _productService = productService;
         }
 
-        [Authorize]
+        [Authorize(Roles = "RestaurantUser")]
         [HttpGet("deliveries")]
         public async Task<IActionResult> GetDelivery([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DeliveryStatus? status = DeliveryStatus.Created)
         {

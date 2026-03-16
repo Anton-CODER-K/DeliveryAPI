@@ -332,6 +332,25 @@ namespace DeliveryAPI.Application.Services
             return deliveries;
         }
 
+
+        public async Task<List<DeliveryUserResult>> GetDeliveriesByCourierAsync(int page, int pageSize, int courierId, DeliveryStatus? deliveryStatus)
+        {
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+            if (pageSize > 50) pageSize = 50;
+
+            int offset = (page - 1) * pageSize;
+
+            List<DeliveryUserResult> deliveries = new List<DeliveryUserResult>();
+
+            await _tx.ExecuteAsync(async (conn, tx) =>
+            {
+                deliveries = await _deliveryRepo.GetDeliveriesByCourierId(conn, tx, offset, pageSize, courierId, deliveryStatus);
+            });
+
+            return deliveries;
+        }
+
         internal async Task<AddressDeliveryIdResponse?> GetDeliveryAddressAsync(int deliveryId)
         {
             AddressDeliveryIdResponse? result = null;

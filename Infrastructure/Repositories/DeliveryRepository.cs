@@ -348,6 +348,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
 
             return deliveries.Values.ToList();
         }
+
         public async Task<List<DeliveryAdminResult>> GetDeliveriesAdmin(NpgsqlConnection conn, NpgsqlTransaction tx, int offset, int pageSize, DeliveryStatus? status)
         {
             var deliveries = new Dictionary<int, DeliveryAdminResult>();
@@ -431,7 +432,6 @@ namespace DeliveryAPI.Infrastructure.Repositories
 
             return deliveries.Values.ToList();
         }
-
 
         public async Task<int> AcceptedDeliveryByCourier(NpgsqlConnection conn, NpgsqlTransaction tx, int deliveryId, int courierId, DeliveryStatus courierAssigned, DeliveryStatus restaurantConfirmed)
         {
@@ -727,6 +727,82 @@ namespace DeliveryAPI.Infrastructure.Repositories
             }
 
             return null;
+        }
+
+        public async Task<List<DeliveryUserResult>> GetDeliveriesByCourierId(NpgsqlConnection conn, NpgsqlTransaction tx, int offset, int pageSize, int courierId, DeliveryStatus? status)
+        {
+            var deliveries = new Dictionary<int, DeliveryUserResult>();
+
+            var sql = """
+                SELECT 
+                    d.delivery_id,
+                    sd.name,
+                    pm.name,
+                    d.total_price,
+                    d.total_weight_grams,
+                    d.created_at,
+                    di.product_name,
+                    di.quantity,
+                    di.total_line_amount
+                FROM delivery d
+                Join delivery_items di On di.delivery_id = d.delivery_id
+                Join status_delivery sd On sd.status_delivery_id = d.status_delivery_id
+                Join payment_method pm On pm.payment_method_id = d.payment_method_id
+                WHERE courier_user_id = @courierId
+                """;
+
+            if (status != null)
+            {
+                sql += " AND d.status_delivery_id = @status";
+            }
+
+            sql += """   
+             ORDER BY d.created_at DESC
+             LIMIT @limit OFFSET @offset;
+            """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@courierId", NpgsqlDbType.Integer).Value = courierId;
+            cmd.Parameters.Add("@limit", NpgsqlDbType.Integer).Value = pageSize;
+            cmd.Parameters.Add("@offset", NpgsqlDbType.Integer).Value = offset;
+
+            if (status != null)
+            {
+                cmd.Parameters.Add("@status", NpgsqlDbType.Integer).Value = (int)status;
+            }
+
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            while (reader.Read())
+            {
+                int deliveryId = reader.GetInt32(0);
+
+                if (!deliveries.ContainsKey(deliveryId))
+                {
+                    deliveries[deliveryId] = new DeliveryUserResult
+                    {
+                        DeliveryId = deliveryId,
+                        StatusDelivery = reader.GetString(1),
+                        PaymentMethod = reader.GetString(2),
+                        TotalPrice = reader.GetDecimal(3),
+                        Total_weight_grams = reader.GetInt32(4),
+                        CreatedAt = reader.GetDateTime(5),
+                        Items = new List<DeliveryUserItem>()
+                    };
+                }
+
+                deliveries[deliveryId].Items.Add(new DeliveryUserItem
+                {
+                    ProductName = reader.GetString(6),
+                    Quantity = reader.GetInt32(7),
+                    TotalLineAmount = reader.GetDecimal(8)
+                });
+
+            }
+
+            return deliveries.Values.ToList();
         }
     }
 }
