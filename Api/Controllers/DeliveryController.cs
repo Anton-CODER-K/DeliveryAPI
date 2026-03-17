@@ -63,6 +63,8 @@ namespace DeliveryAPI.Api.Controllers
             await _deliveryService.AcceptDeliveryByUserAsync(id, userId);
             return Ok("Accepted Delivery");
         }
+
+       
     }
 }
 

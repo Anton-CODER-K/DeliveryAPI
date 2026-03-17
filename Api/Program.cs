@@ -78,6 +78,8 @@ namespace DeliveryAPI.Api
             builder.Services.AddScoped<ProductService>();
             builder.Services.AddScoped<CategoryService>();
             builder.Services.AddScoped<UserService>();
+            builder.Services.AddScoped<PaymentService>();
+            builder.Services.AddScoped<LiqPayService>();
             builder.Services.AddScoped<IVerificationCodeGenerator, NumericVerificationCodeGenerator>();
             builder.Services.AddScoped<IVerificationMessageBuilder, SmsVerificationMessageBuilder>();
             builder.Services.AddScoped<INotificationSender, FakeSmsSender>();
@@ -89,6 +91,7 @@ namespace DeliveryAPI.Api
             builder.Services.AddScoped<UserRepository>();
             builder.Services.AddScoped<ProductRepository>();
             builder.Services.AddScoped<CategoryRepository>();
+            builder.Services.AddScoped<PaymentRepository>();
 
             // Database infra
             builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();

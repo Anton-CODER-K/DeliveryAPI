@@ -433,23 +433,28 @@ namespace DeliveryAPI.Infrastructure.Repositories
             return deliveries.Values.ToList();
         }
 
-        public async Task<int> AcceptedDeliveryByCourier(NpgsqlConnection conn, NpgsqlTransaction tx, int deliveryId, int courierId, DeliveryStatus courierAssigned, DeliveryStatus restaurantConfirmed)
+        public async Task<int> AcceptedDeliveryByCourier(NpgsqlConnection conn, NpgsqlTransaction tx, int deliveryId, int courierId)
         {
             const string sql = """
                 UPDATE delivery
-                SET status_delivery_id = @assigned,
+                SET
                     courier_user_id = @courierId
                 WHERE delivery_id = @deliveryId
-                AND status_delivery_id = @restaurantConfirmed
-                And courier_user_id is null
+                    AND courier_user_id IS NULL
+                    AND status_delivery_id IN (@paid, @preparing, @readyForPickup)
+                RETURNING delivery_id;
                 """;
 
             await using var cmd = new NpgsqlCommand(sql, conn, tx);
 
-            cmd.Parameters.Add("@assigned", NpgsqlDbType.Integer).Value = (int)courierAssigned;
+            
             cmd.Parameters.Add("@courierId", NpgsqlDbType.Integer).Value = courierId;
             cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer).Value = deliveryId;
-            cmd.Parameters.Add("@restaurantConfirmed", NpgsqlDbType.Integer).Value = (int)restaurantConfirmed;
+           
+            cmd.Parameters.Add("@courierAssigned", NpgsqlDbType.Integer).Value = (int)DeliveryStatus.ReadyForPickup;
+            cmd.Parameters.Add("@paid", NpgsqlDbType.Integer).Value = (int)DeliveryStatus.Paid;
+            cmd.Parameters.Add("@preparing", NpgsqlDbType.Integer).Value = (int)DeliveryStatus.Preparing;
+            cmd.Parameters.Add("@readyForPickup", NpgsqlDbType.Integer).Value = (int)DeliveryStatus.ReadyForPickup;
 
             int rows = await cmd.ExecuteNonQueryAsync();
 
@@ -551,7 +556,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
             int deliveryId,
             int userId,
             DeliveryStatus pickedUp,
-            DeliveryStatus courierAssigned)
+            DeliveryStatus readyForPickup)
         {
             const string sql = """
                 UPDATE delivery
@@ -566,7 +571,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
             cmd.Parameters.Add("@pickedUp", NpgsqlDbType.Integer).Value = (int)pickedUp;
             cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer).Value = deliveryId;
             cmd.Parameters.Add("@userId", NpgsqlDbType.Integer).Value = userId;
-            cmd.Parameters.Add("@courierAssigned", NpgsqlDbType.Integer).Value = (int)courierAssigned;
+            cmd.Parameters.Add("@courierAssigned", NpgsqlDbType.Integer).Value = (int)readyForPickup;
 
             return await cmd.ExecuteNonQueryAsync();
         }
@@ -803,6 +808,56 @@ namespace DeliveryAPI.Infrastructure.Repositories
             }
 
             return deliveries.Values.ToList();
+        }
+
+        public async Task<bool> CheckDeliveryByUserId(NpgsqlConnection conn, NpgsqlTransaction tx, int deliveryId, int userId)
+        {
+            const string sql = """
+                Select 1
+                From delivery
+                Where delivery_id = @deliveryId
+                and user_id = @userId
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer).Value = deliveryId;
+            cmd.Parameters.Add("@userId", NpgsqlDbType.Integer).Value = userId;
+
+            var result = await cmd.ExecuteScalarAsync();
+
+            return result != null;
+        }
+
+        public async Task<DeliveryPaymentResult> GetDeliveryPayment(NpgsqlConnection conn, NpgsqlTransaction tx, int deliveryId)
+        {
+            const string sql = """
+                Select
+                    d.user_id,
+                    d.status_delivery_id,
+                    d.total_price
+                From delivery d
+                Where delivery_id = @deliveryId
+                Limit 1
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer).Value = deliveryId;
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            if (reader.Read())
+            {
+                return new DeliveryPaymentResult
+                {
+                    UserId = reader.GetInt32(0),
+                    Status = reader.GetInt32(1),
+                    TotalPrice = reader.GetDecimal(2)
+                };
+            }
+
+            throw new BusinessException("DELIVERY_NOT_FOUND", "Delivery not found");
         }
     }
 }

@@ -16,16 +16,18 @@ namespace DeliveryAPI.Application.Services
         private readonly DeliveryRepository _deliveryRepo;
         private readonly AddressRepository _addressRepo;
         private readonly ProductRepository _productRepo;
+        private readonly PaymentService _paymentService;
         private readonly ILogger<DeliveryService> _logger;
 
 
-        public DeliveryService(TransactionExecutor tx, DeliveryRepository deliveryRepository, AddressRepository addressRepository, ProductRepository productRepo, ILogger<DeliveryService> logger)
+        public DeliveryService(TransactionExecutor tx, DeliveryRepository deliveryRepository, AddressRepository addressRepository, ProductRepository productRepo, ILogger<DeliveryService> logger, PaymentService paymentService)
         {
             _tx = tx;
             _deliveryRepo = deliveryRepository;
             _addressRepo = addressRepository;
             _productRepo = productRepo;
             _logger = logger;
+            _paymentService = paymentService;
         }
 
 
@@ -179,10 +181,15 @@ namespace DeliveryAPI.Application.Services
                 if (delivery.RestaurantId != restaurantId)
                     throw new ForbiddenException("You cannot manage this delivery");
 
-                if (delivery.Status != (int)DeliveryStatus.Created)
+                if (delivery.Status == (int)DeliveryStatus.ReadyForPickup)
                     throw new BusinessException("INVALID_STATUS", "Delivery cannot be confirmed");
+                if (delivery.Status == (int)DeliveryStatus.PickedUp)
+                    throw new BusinessException("INVALID_STATUS", "Delivery cannot be confirmed");
+                if (delivery.Status == (int)DeliveryStatus.Delivered)
+                    throw new BusinessException("INVALID_STATUS", "Delivery cannot be confirmed");
+               
 
-                await _deliveryRepo.UpdateStatus(conn, tx, deliveryId, DeliveryStatus.Canceled);
+                await _deliveryRepo.UpdateStatus(conn, tx, deliveryId, DeliveryStatus.Cancelled);
 
                 _logger.LogInformation("User {UserId} by Restaurant {RestaurantId} accept delivery {DeliveryId}", userId, restaurantId, deliveryId);
             });
@@ -234,7 +241,7 @@ namespace DeliveryAPI.Application.Services
         {
             await _tx.ExecuteAsync(async (conn, tx) =>
             {
-                if(await _deliveryRepo.AcceptedDeliveryByCourier(conn, tx, deliveryId, userId, DeliveryStatus.CourierAssigned, DeliveryStatus.RestaurantConfirmed) == 0)
+                if(await _deliveryRepo.AcceptedDeliveryByCourier(conn, tx, deliveryId, userId) == 0)
                 {
                     throw new BusinessException("DELIVERY_ALREADY_TAKEN", "Delivery already taken");
                 }
@@ -254,7 +261,7 @@ namespace DeliveryAPI.Application.Services
                     deliveryId,
                     userId,
                     DeliveryStatus.PickedUp,
-                    DeliveryStatus.CourierAssigned);
+                    DeliveryStatus.ReadyForPickup);
 
                 if (rows == 0)
                     throw new BusinessException("DELIVERY_STATUS_NOT_CHANGED",

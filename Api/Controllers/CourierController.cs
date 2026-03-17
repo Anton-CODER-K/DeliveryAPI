@@ -31,6 +31,7 @@ namespace DeliveryAPI.Api.Controllers
         [HttpGet("/my")]
         public async Task<IActionResult> GetDeliveryMyActive([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DeliveryStatus? deliveryStatus = null)
         {
+
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
                 throw new UnauthorizedException("UserId claim missing");
