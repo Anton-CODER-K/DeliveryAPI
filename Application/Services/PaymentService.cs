@@ -76,10 +76,10 @@ namespace DeliveryAPI.Application.Services
                     throw new BusinessException("PAYMENT_NOT_FOUND", "Payment not found");
 
 
-                if (payment.Amount != webhook.amount)
-                    throw new BusinessException("INVALID_AMOUNT", "Payment not found");
+                if (Math.Abs(payment.Amount - webhook.amount) > 0.01m)
+                    throw new BusinessException("INVALID_AMOUNT", "Invalid amount");
 
-                if (payment.Status == (int)PaymentStatus.Pending) 
+                if (payment.Status != (int)PaymentStatus.Pending) 
                     return;
 
                 var deliveryId = await _paymentRepo.MarkSuccessAndGetDeliveryId(
