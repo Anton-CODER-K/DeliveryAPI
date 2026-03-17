@@ -42,16 +42,9 @@ namespace DeliveryAPI.Api.Controllers
             _logger.LogInformation("Webhook data: {Data}", request.Data);
             _logger.LogInformation("Webhook signature: {Signature}", request.Signature);
 
-            try
-            {
-                await _paymentService.HandleWebhook(request);
-                return Ok();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Webhook error");
-                return StatusCode(500);
-            }
+            await _paymentService.HandleWebhook(request);
+            return Ok();
+           
         }
     }
 }
