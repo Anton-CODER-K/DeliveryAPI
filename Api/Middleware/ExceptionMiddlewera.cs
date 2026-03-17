@@ -6,10 +6,12 @@ namespace DeliveryAPI.Api.Middleware
     public class ExceptionMiddleware
     {
         private readonly RequestDelegate _next;
+        private readonly ILogger<ExceptionMiddleware> _logger;
 
-        public ExceptionMiddleware(RequestDelegate next)
+        public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
         {
             _next = next;
+            _logger = logger;
         }
 
         public async Task Invoke(HttpContext context)
@@ -20,6 +22,11 @@ namespace DeliveryAPI.Api.Middleware
             }
             catch (UnauthorizedException ex)
             {
+
+                _logger.LogWarning(ex, "Unauthorized access");
+
+                _logger.LogError(ex, "Error on {Method} {Path}", context.Request.Method, context.Request.Path);
+
                 context.Response.StatusCode = 401;
                 await context.Response.WriteAsJsonAsync(new
                 {
@@ -29,6 +36,10 @@ namespace DeliveryAPI.Api.Middleware
             }
             catch (BusinessException ex)
             {
+                _logger.LogWarning(ex, "Business error: {Code}", ex.Code);
+
+                _logger.LogError(ex, "Error on {Method} {Path}", context.Request.Method, context.Request.Path);
+
                 context.Response.StatusCode = 400;
                 await context.Response.WriteAsJsonAsync(new
                 {
@@ -38,6 +49,10 @@ namespace DeliveryAPI.Api.Middleware
             }
             catch (ForbiddenException ex)
             {
+                _logger.LogWarning(ex, "Forbidden");
+
+                _logger.LogError(ex, "Error on {Method} {Path}", context.Request.Method, context.Request.Path);
+
                 context.Response.StatusCode = 403;
                 await context.Response.WriteAsJsonAsync(new
                 {
@@ -47,12 +62,15 @@ namespace DeliveryAPI.Api.Middleware
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Unhandled exception");
+
+                _logger.LogError(ex, "Error on {Method} {Path}", context.Request.Method, context.Request.Path);
+
                 context.Response.StatusCode = 500;
                 await context.Response.WriteAsJsonAsync(new
                 {
                     code = "INTERNAL_ERROR",
-                    message = "Internal server error",
-                    messageTest = ex.Message
+                    message = "Internal server error"
                 });
             }
         }
