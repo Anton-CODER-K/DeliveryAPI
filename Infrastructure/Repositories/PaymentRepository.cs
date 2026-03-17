@@ -49,7 +49,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
             await using var cmd = new NpgsqlCommand(sql, conn, tx);
 
             cmd.Parameters.Add("@paymentId", NpgsqlDbType.Integer).Value = paymentId;
-            cmd.Parameters.Add("@externalId", NpgsqlDbType.Text).Value = externalId;
+            cmd.Parameters.Add("@externalId", NpgsqlDbType.Bigint).Value = externalId;
 
             var result = await cmd.ExecuteScalarAsync();
 
