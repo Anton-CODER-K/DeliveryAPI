@@ -59,23 +59,33 @@ namespace DeliveryAPI.Infrastructure.Repositories
             return (int)result;
         }
 
-        public async Task<bool> HasPendingPayment(
+        public async Task<Payment?> GetPendingPayment(
             NpgsqlConnection conn,
             NpgsqlTransaction tx,
             int deliveryId)
         {
             const string sql = """
-                SELECT 1
+                SELECT payment_id, amount
                 FROM payments
                 WHERE delivery_id = @deliveryId
                 AND status_id = 0
+                LIMIT 1
                 """;
 
             await using var cmd = new NpgsqlCommand(sql, conn, tx);
 
             cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer).Value = deliveryId;
 
-            return await cmd.ExecuteScalarAsync() != null;
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            if (!await reader.ReadAsync())
+                return null;
+
+            return new Payment
+            {
+                PaymentId = reader.GetInt32(0),
+                Amount = reader.GetDecimal(1)
+            };
         }
 
         public async Task<bool> IsAlreadyPaid(
@@ -87,7 +97,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 SELECT 1
                 FROM payments
                 WHERE payment_id = @paymentId
-                AND status = 1
+                AND status_id = 1
                 """;
 
             await using var cmd = new NpgsqlCommand(sql, conn, tx);

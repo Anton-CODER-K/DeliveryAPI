@@ -31,7 +31,28 @@ namespace DeliveryAPI.Infrastructure.Database
             }
         }
 
-       
+        public async Task<T> ExecuteAsync<T>(Func<NpgsqlConnection, NpgsqlTransaction, Task<T>> action)
+        {
+            await using var conn = _factory.Create();
+            await conn.OpenAsync();
+
+            await using var tx = await conn.BeginTransactionAsync();
+
+            try
+            {
+                var result = await action(conn, tx);
+
+                await tx.CommitAsync();
+
+                return result;
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
+        }
+
         public async Task<T> ExecuteAsync<T>(
             Func<NpgsqlConnection, Task<T>> action)
         {

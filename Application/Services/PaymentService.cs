@@ -32,24 +32,19 @@ namespace DeliveryAPI.Application.Services
 
         public async Task<LiqPayCheckoutResponse> CreatePayment(int deliveryId, int userId)
         {
-            var liqPayChekout = new LiqPayCheckoutResponse();
-
-            await _tx.ExecuteAsync(async (conn, tx) =>
+            return await _tx.ExecuteAsync(async (conn, tx) =>
             {
                 var delivery = await _deliveryRepo.GetDeliveryPayment(conn, tx, deliveryId);
 
                 if (delivery == null || delivery.UserId != userId)
                     throw new BusinessException("DELIVERY_NOT_FOUND", "Delivery not found");
 
-                if (delivery.Status != (int)DeliveryStatus.RestaurantConfirmed)
-                    throw new BusinessException("INVALID_STATUS", "Delivery not ready for payment");
+                var existingPayment = await _paymentRepo.GetPendingPayment(conn, tx, deliveryId);
 
-                var existingPayment = await _paymentRepo.HasPendingPayment(conn, tx, deliveryId);
-
-                if (existingPayment)
-                    throw new BusinessException("PAYMENT_ALREADY_EXISTS", "Payment already exists");
-
-
+                if (existingPayment != null)
+                {
+                    return _liqPay.CreateCheckout(existingPayment.PaymentId, existingPayment.Amount);
+                }
 
                 var paymentId = await _paymentRepo.CreatePayment(
                     conn,
@@ -57,10 +52,8 @@ namespace DeliveryAPI.Application.Services
                     deliveryId,
                     delivery.TotalPrice);
 
-                liqPayChekout = _liqPay.CreateCheckout(paymentId, delivery.TotalPrice);
+                return _liqPay.CreateCheckout(paymentId, delivery.TotalPrice);
             });
-
-            return liqPayChekout;
         }
 
         public async Task HandleWebhook(LiqPayWebhookRequest request)
