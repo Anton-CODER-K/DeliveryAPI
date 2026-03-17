@@ -35,7 +35,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
             NpgsqlConnection conn,
             NpgsqlTransaction tx,
             int paymentId,
-            string externalId)
+            long externalId)
         {
             const string sql = """
                 UPDATE payments
