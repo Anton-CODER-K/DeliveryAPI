@@ -13,10 +13,12 @@ namespace DeliveryAPI.Api.Controllers
     public class PaymentController : ControllerBase
     {
         private readonly PaymentService _paymentService;
+        private readonly ILogger<PaymentController> _logger;
 
-        public PaymentController(PaymentService paymentService)
+        public PaymentController(PaymentService paymentService, ILogger<PaymentController> logger)
         {
             _paymentService = paymentService;
+            _logger = logger;
         }
 
         [Authorize]
@@ -37,6 +39,10 @@ namespace DeliveryAPI.Api.Controllers
         [HttpPost("webhook")]
         public async Task<IActionResult> Webhook([FromForm] LiqPayWebhookRequest request)
         {
+            _logger.LogInformation("Webhook data: {Data}", request.Data);
+            _logger.LogInformation("Webhook signature: {Signature}", request.Signature);
+
+
             await _paymentService.HandleWebhook(request);
 
             return Ok();
