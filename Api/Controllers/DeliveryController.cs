@@ -36,7 +36,7 @@ namespace DeliveryAPI.Api.Controllers
                 PaymentMethodId = request.PaymentMethodId,
                 Products = request.Products,
             });
-            return Ok(result);
+            return Ok(new { id = result });
         }
 
         [Authorize]
