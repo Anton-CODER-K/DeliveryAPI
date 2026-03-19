@@ -116,7 +116,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 SELECT payment_id, amount, status_id, delivery_id
                 FROM payments
                 WHERE payment_id = @paymentId
-            """;
+                """;
 
             await using var cmd = new NpgsqlCommand(sql, conn, tx);
 

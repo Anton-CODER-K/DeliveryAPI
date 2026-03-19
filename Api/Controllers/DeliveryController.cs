@@ -29,14 +29,14 @@ namespace DeliveryAPI.Api.Controllers
 
             int userId = int.Parse(userIdClaim.Value);
 
-            await _deliveryService.CreateAsync(new DeliveryCreateInput
+            var result = await _deliveryService.CreateAsync(new DeliveryCreateInput
             {
                 UserId = userId,
                 AddressId = request.AddressId,
                 PaymentMethodId = request.PaymentMethodId,
                 Products = request.Products,
             });
-            return Ok();
+            return Ok(result);
         }
 
         [Authorize]
