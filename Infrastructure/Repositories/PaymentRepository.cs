@@ -12,19 +12,21 @@ namespace DeliveryAPI.Infrastructure.Repositories
             NpgsqlConnection conn,
             NpgsqlTransaction tx,
             int deliveryId,
-            decimal amount)
+            decimal amount,
+            string provider)
         {
             const string sql = """
                 INSERT INTO payments
                 (delivery_id, provider, amount, status_id)
                 VALUES
-                (@deliveryId, 'liqpay', @amount, @pending)
+                (@deliveryId, @provider, @amount, @pending)
                 RETURNING payment_id
                 """;
 
             await using var cmd = new NpgsqlCommand(sql, conn, tx);
 
             cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer).Value = deliveryId;
+            cmd.Parameters.Add("@provider", NpgsqlDbType.Text).Value = provider;
             cmd.Parameters.Add("@amount", NpgsqlDbType.Numeric).Value = amount;
             cmd.Parameters.Add("@pending", NpgsqlDbType.Integer).Value = (int)PaymentStatus.Pending;
 

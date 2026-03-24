@@ -5,6 +5,7 @@ using DeliveryAPI.Infrastructure.Database;
 using DeliveryAPI.Infrastructure.Repositories;
 using DeliveryAPI.Application.Exeptions;
 using DeliveryAPI.Application.Enums;
+using Npgsql;
 
 namespace DeliveryAPI.Application.Services
 {
@@ -50,10 +51,16 @@ namespace DeliveryAPI.Application.Services
                     conn,
                     tx,
                     deliveryId,
-                    delivery.TotalPrice);
+                    delivery.TotalPrice,
+                    "liqpay");
 
                 return _liqPay.CreateCheckout(paymentId, delivery.TotalPrice);
             });
+        }
+
+        public async Task CreateCashPayment(NpgsqlConnection conn, NpgsqlTransaction tx, int deliveryId, decimal totalAmount)
+        {
+            await _paymentRepo.CreatePayment(conn, tx, deliveryId, totalAmount, "cash");
         }
 
         public async Task HandleWebhook(LiqPayWebhookRequest request)
@@ -88,11 +95,11 @@ namespace DeliveryAPI.Application.Services
                     paymentId,
                     webhook.payment_id);
 
-                await _deliveryRepo.UpdateStatus(
-                    conn,
-                    tx,
-                    deliveryId,
-                    DeliveryStatus.Paid);
+                //await _deliveryRepo.UpdateStatus(
+                //    conn,
+                //    tx,
+                //    deliveryId,
+                //    DeliveryStatus.Paid);
             });
         }
     }

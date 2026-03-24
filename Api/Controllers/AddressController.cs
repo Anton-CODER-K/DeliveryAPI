@@ -4,6 +4,7 @@ using DeliveryAPI.Api.Contracts.Response;
 using DeliveryAPI.Api.Middleware;
 using DeliveryAPI.Application.Exeptions;
 using DeliveryAPI.Application.Models.Input;
+using DeliveryAPI.Application.Models.Result;
 using DeliveryAPI.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -50,6 +51,7 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize]
         [HttpGet]
+        [ProducesResponseType(typeof(AddressUserIdResponse), 200)]
         public async Task<IActionResult> GetAddressByUserId()
         {
             List<AddressUserIdResponse> addressUserIdResponses = new List<AddressUserIdResponse>();

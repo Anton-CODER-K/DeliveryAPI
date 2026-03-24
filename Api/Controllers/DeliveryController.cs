@@ -2,6 +2,7 @@
 using DeliveryAPI.Api.Contracts.Request;
 using DeliveryAPI.Application.Exeptions;
 using DeliveryAPI.Application.Models.Input;
+using DeliveryAPI.Application.Models.Result;
 using DeliveryAPI.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,6 +22,7 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize]
         [HttpPost]
+        [ProducesResponseType(typeof(int), 200)]
         public async Task<IActionResult> Create([FromBody] DeliveryCreateRequest request)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -41,6 +43,7 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize]
         [HttpGet("my")]
+        [ProducesResponseType(typeof(DeliveryUserResult), 200)]
         public async Task<IActionResult> GetDeliveriesByUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);

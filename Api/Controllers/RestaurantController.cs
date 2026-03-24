@@ -53,6 +53,22 @@ namespace DeliveryAPI.Api.Controllers
         }
 
         [Authorize(Roles = "RestaurantUser")]
+        [HttpPut("deliveries/{id}/cooking")]
+        public async Task<IActionResult> CookingDelivery([FromRoute] int id)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                throw new UnauthorizedException("UserId claim missing");
+            int userId = int.Parse(userIdClaim.Value);
+
+
+            await _deliveryService.CookingDeliveryByRestaurantAsync(userId, id);
+
+            return Ok("Delivery Canceled");
+        }
+
+
+        [Authorize(Roles = "RestaurantUser")]
         [HttpPut("deliveries/{id}/cancel")]
         public async Task<IActionResult> CancelDelivery([FromRoute] int id)
         {

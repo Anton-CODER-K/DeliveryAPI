@@ -122,6 +122,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                     d.delivery_id,
                     sd.name,
                     pm.name,
+                    ps.name,
                     d.total_price,
                     d.total_weight_grams,
                     d.created_at,
@@ -132,6 +133,8 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 Join delivery_items di On di.delivery_id = d.delivery_id
                 Join status_delivery sd On sd.status_delivery_id = d.status_delivery_id
                 Join payment_method pm On pm.payment_method_id = d.payment_method_id
+                Left Join payments p On p.delivery_id = d.delivery_id
+                Left Join payment_statuses ps On ps.Id = p.status_id 
                 Where user_id = @userId
                 """;
 
@@ -152,18 +155,19 @@ namespace DeliveryAPI.Infrastructure.Repositories
                         DeliveryId = deliveryId,
                         StatusDelivery = reader.GetString(1),
                         PaymentMethod = reader.GetString(2),
-                        TotalPrice = reader.GetDecimal(3),
-                        Total_weight_grams = reader.GetInt32(4),
-                        CreatedAt = reader.GetDateTime(5),
+                        PaymentStatus = reader.IsDBNull(3) ? null : reader.GetString(3),
+                        TotalPrice = reader.GetDecimal(4),
+                        Total_weight_grams = reader.GetInt32(5),
+                        CreatedAt = reader.GetDateTime(6),
                         Items = new List<DeliveryUserItem>()
                     };
                 }
 
                 deliveries[deliveryId].Items.Add(new DeliveryUserItem
                 {
-                    ProductName = reader.GetString(6),
-                    Quantity = reader.GetInt32(7),
-                    TotalLineAmount = reader.GetDecimal(8)
+                    ProductName = reader.GetString(7),
+                    Quantity = reader.GetInt32(8),
+                    TotalLineAmount = reader.GetDecimal(9)
                 });
 
             }
@@ -204,6 +208,42 @@ namespace DeliveryAPI.Infrastructure.Repositories
 
         }
 
+        public async Task<RestaurantIdAndStatusPaymentResult?> GetRestaurantIdStatusPaymentByDeliveryId(NpgsqlConnection conn, NpgsqlTransaction tx, int deliveryId)
+        {
+            const string sql = """
+                Select 
+                    d.restaurant_id, d.status_delivery_id, p.status_id, d.payment_method_id 
+                From
+                    delivery d
+                Join
+                    payments p On p.delivery_id = d.delivery_id
+                Where
+                    delivery_id = @deliveryId
+                Limit 1
+
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer).Value = deliveryId;
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            if (reader.Read())
+            {
+                return new RestaurantIdAndStatusPaymentResult
+                {
+                    RestaurantId = reader.GetInt32(0),
+                    Status = reader.GetInt32(1),
+                    StatusPayment = reader.GetInt32(2),
+                    PaymentMethod = reader.GetInt32(3),
+                };
+            }
+
+            return null;
+
+        }
+
         public async Task UpdateStatus(NpgsqlConnection conn, NpgsqlTransaction tx, int deliveryId, DeliveryStatus restaurantConfirmed)
         {
             const string sql = """
@@ -225,20 +265,23 @@ namespace DeliveryAPI.Infrastructure.Repositories
 
 
             const string sql = """
-                SELECT 
+                Select
                     d.delivery_id,
                     sd.name,
                     pm.name,
+                    ps.name,
                     d.total_price,
                     d.total_weight_grams,
                     d.created_at,
                     di.product_name,
                     di.quantity,
                     di.total_line_amount
-                FROM delivery d
+                From delivery d
                 Join delivery_items di On di.delivery_id = d.delivery_id
                 Join status_delivery sd On sd.status_delivery_id = d.status_delivery_id
                 Join payment_method pm On pm.payment_method_id = d.payment_method_id
+                Left Join payments p On p.delivery_id = d.delivery_id
+                Left Join payment_statuses ps On ps.Id = p.status_id 
                 WHERE (@status IS NULL OR d.status_delivery_id = @status)
                 AND d.restaurant_id = @restaurantId
                 ORDER BY created_at DESC
@@ -266,24 +309,107 @@ namespace DeliveryAPI.Infrastructure.Repositories
                         DeliveryId = deliveryId,
                         StatusDelivery = reader.GetString(1),
                         PaymentMethod = reader.GetString(2),
-                        TotalPrice = reader.GetDecimal(3),
-                        Total_weight_grams = reader.GetInt32(4),
-                        CreatedAt = reader.GetDateTime(5),
+                        PaymentStatus = reader.IsDBNull(3) ? null : reader.GetString(3),
+                        TotalPrice = reader.GetDecimal(4),
+                        Total_weight_grams = reader.GetInt32(5),
+                        CreatedAt = reader.GetDateTime(6),
                         Items = new List<DeliveryUserItem>()
                     };
                 }
 
                 deliveries[deliveryId].Items.Add(new DeliveryUserItem
                 {
-                    ProductName = reader.GetString(6),
-                    Quantity = reader.GetInt32(7),
-                    TotalLineAmount = reader.GetDecimal(8)
+                    ProductName = reader.GetString(7),
+                    Quantity = reader.GetInt32(8),
+                    TotalLineAmount = reader.GetDecimal(9)
                 });
 
             }
 
             return deliveries.Values.ToList();
         }
+
+        public async Task<List<DeliveryUserByCourierResult?>> GetDeliveriesByCourier(NpgsqlConnection conn, NpgsqlTransaction tx, int offset, int pageSize, DeliveryStatus? status, int restaurantId)
+        {
+            var deliveries = new Dictionary<int, DeliveryUserByCourierResult>();
+
+
+            const string sql = """
+                Select
+                    d.delivery_id,
+                    sd.name,
+                    pm.name,
+                    ps.name,
+
+                    u.name,
+                    u.phone_number,
+                    u.birth_date,
+
+                    d.total_price,
+                    d.total_weight_grams,
+                    d.created_at,
+                    di.product_name,
+                    di.quantity,
+                    di.total_line_amount
+                From delivery d
+                Join delivery_items di On di.delivery_id = d.delivery_id
+                Join status_delivery sd On sd.status_delivery_id = d.status_delivery_id
+                Join payment_method pm On pm.payment_method_id = d.payment_method_id
+                Left Join payments p On p.delivery_id = d.delivery_id
+                Left Join payment_statuses ps On ps.Id = p.status_id 
+                Join users u On u.user_id = d.user_id
+                WHERE (@status IS NULL OR d.status_delivery_id = @status)
+                AND d.restaurant_id = @restaurantId
+                ORDER BY created_at DESC
+                LIMIT @limit OFFSET @offset;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@limit", NpgsqlDbType.Integer).Value = pageSize;
+            cmd.Parameters.Add("@offset", NpgsqlDbType.Integer).Value = offset;
+            cmd.Parameters.Add("@status", NpgsqlDbType.Integer).Value = status is null ? DBNull.Value : (int)status;
+            cmd.Parameters.Add("@restaurantId", NpgsqlDbType.Integer).Value = restaurantId;
+
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            while (reader.Read())
+            {
+                int deliveryId = reader.GetInt32(0);
+
+                if (!deliveries.ContainsKey(deliveryId))
+                {
+                    deliveries[deliveryId] = new DeliveryUserByCourierResult
+                    {
+                        DeliveryId = deliveryId,
+                        StatusDelivery = reader.GetString(1),
+                        PaymentMethod = reader.GetString(2),
+                        PaymentStatus = reader.IsDBNull(3) ? null : reader.GetString(3),
+                        UserName = reader.GetString(4),
+                        UserPhone = reader.GetString(5),
+                        UserBirthday = reader.GetDateTime(6),
+                        TotalPrice = reader.GetDecimal(7),
+                        Total_weight_grams = reader.GetInt32(8),
+                        CreatedAt = reader.GetDateTime(9),
+                        Items = new List<DeliveryUserByCourierItem>()
+                    };
+                }
+
+                deliveries[deliveryId].Items.Add(new DeliveryUserByCourierItem
+                {
+                    ProductName = reader.GetString(10),
+                    Quantity = reader.GetInt32(11),
+                    TotalLineAmount = reader.GetDecimal(12)
+                });
+
+            }
+
+            return deliveries.Values.ToList();
+        }
+
+
+
 
         public async Task<List<DeliveryUserResult>> GetDeliveries(NpgsqlConnection conn, NpgsqlTransaction tx, int offset, int pageSize, DeliveryStatus? status)
         {
@@ -441,7 +567,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                     courier_user_id = @courierId
                 WHERE delivery_id = @deliveryId
                     AND courier_user_id IS NULL
-                    AND status_delivery_id IN (@paid, @preparing, @readyForPickup)
+                    AND status_delivery_id IN (@preparing, @readyForPickup)
                 RETURNING delivery_id;
                 """;
 
@@ -452,7 +578,6 @@ namespace DeliveryAPI.Infrastructure.Repositories
             cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer).Value = deliveryId;
            
             cmd.Parameters.Add("@courierAssigned", NpgsqlDbType.Integer).Value = (int)DeliveryStatus.ReadyForPickup;
-            cmd.Parameters.Add("@paid", NpgsqlDbType.Integer).Value = (int)DeliveryStatus.Paid;
             cmd.Parameters.Add("@preparing", NpgsqlDbType.Integer).Value = (int)DeliveryStatus.Preparing;
             cmd.Parameters.Add("@readyForPickup", NpgsqlDbType.Integer).Value = (int)DeliveryStatus.ReadyForPickup;
 

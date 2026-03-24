@@ -4,11 +4,10 @@
     {
         Created = 0,
         RestaurantConfirmed = 1,
-        Paid = 2,
-        Preparing = 3, 
-        ReadyForPickup = 4,
-        PickedUp = 5,
-        Delivered = 6,
-        Cancelled = 7,
+        Preparing = 2, 
+        ReadyForPickup = 3,
+        PickedUp = 4,
+        Delivered = 5,
+        Cancelled = 6,
     }
 }

@@ -77,7 +77,7 @@ namespace DeliveryAPI.Application.Services
                 var restaurant = await _deliveryRepo.GetRestaurant(conn, tx, restaurantId);
 
                 if (restaurant == null)
-                    throw new Exception();
+                    throw new BusinessException("RESTAURANT_NOT_FOUND", "Restaurant not found");
 
                 decimal commissionPercent = restaurant.CommissionPercent;
                 decimal commissionAmount = subtotal * commissionPercent;
@@ -98,6 +98,12 @@ namespace DeliveryAPI.Application.Services
                     input.PaymentMethodId
                 );
 
+                if (input.PaymentMethodId == (int)PaymentsMethod.Cash)
+                {
+                    await _paymentService.CreateCashPayment(conn, tx, deliveryId, totalAmount);
+                }
+
+
                 // 6. Створити delivery_items snapshot
                 foreach (var p in products)
                 {
@@ -117,6 +123,8 @@ namespace DeliveryAPI.Application.Services
 
                 // 7. Зберегти snapshot адреси
                 await _deliveryRepo.InsertAddressSnapshot(conn, tx, deliveryId, address);
+
+               
 
                 result = deliveryId;
             });
@@ -164,6 +172,37 @@ namespace DeliveryAPI.Application.Services
             });
         }
 
+        public async Task PreparingDeliveryByRestaurantAsync(int userId, int deliveryId)
+        {
+            await _tx.ExecuteAsync(async (conn, tx) =>
+            {
+                int? restaurantId = await _productRepo.CheckUserIdInRestaurant(conn, tx, userId);
+
+                var delivery = await _deliveryRepo.GetRestaurantIdStatusPaymentByDeliveryId(conn, tx, deliveryId);
+
+                if (delivery == null)
+                    throw new BusinessException("NOT_FOUND", "Delivery not found");
+
+                if (restaurantId == null)
+                    throw new UnauthorizedException("UserId claim missing");
+
+                if (delivery.RestaurantId != restaurantId)
+                    throw new ForbiddenException("You cannot manage this delivery");
+
+                if (delivery.PaymentMethod == (int)PaymentsMethod.Card)
+                {
+                    if (delivery.StatusPayment != (int)PaymentStatus.Success)
+                        throw new BusinessException("INVALID_STATUS", "Delivery cannot be Cooking, Not paid");
+                }
+                
+
+
+                await _deliveryRepo.UpdateStatus(conn, tx, deliveryId, DeliveryStatus.Preparing);
+
+                _logger.LogInformation("User {UserId} by Restaurant {RestaurantId} Preparing delivery {DeliveryId}", userId, restaurantId, deliveryId);
+            });
+        }
+
         public async Task CancelDeliveryByRestaurantAsync(int userId, int deliveryId)
         {
             await _tx.ExecuteAsync(async (conn, tx) =>
@@ -188,6 +227,7 @@ namespace DeliveryAPI.Application.Services
                 if (delivery.Status == (int)DeliveryStatus.Delivered)
                     throw new BusinessException("INVALID_STATUS", "Delivery cannot be confirmed");
                
+                
 
                 await _deliveryRepo.UpdateStatus(conn, tx, deliveryId, DeliveryStatus.Cancelled);
 
