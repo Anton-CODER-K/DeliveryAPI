@@ -24,7 +24,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize]
         [HttpPost]
-        public async Task<IActionResult> CreateAddress([FromBody] AddressCreateRequest request)
+        [ProducesResponseType(typeof(object), 201)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<object>> CreateAddress([FromBody] AddressCreateRequest request)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
@@ -51,8 +53,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize]
         [HttpGet]
-        [ProducesResponseType(typeof(AddressUserIdResponse), 200)]
-        public async Task<IActionResult> GetAddressByUserId()
+        [ProducesResponseType(typeof(List<AddressUserIdResponse>), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<List<AddressUserIdResponse>>> GetAddressByUserId()
         {
             List<AddressUserIdResponse> addressUserIdResponses = new List<AddressUserIdResponse>();
 
@@ -69,7 +72,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize]
         [HttpPut("{id}/default")]
-        public async Task<IActionResult> SetDefaultAddress(int id)
+        [ProducesResponseType(200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult> SetDefaultAddress(int id)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
@@ -83,7 +88,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize]
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteAddress(int id)
+        [ProducesResponseType(200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult> DeleteAddress(int id)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)

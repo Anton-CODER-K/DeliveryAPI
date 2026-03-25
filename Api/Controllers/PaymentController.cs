@@ -23,6 +23,8 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize]
         [HttpPost("{deliveryId}")]
+        [ProducesResponseType(typeof(LiqPayCheckoutResponse), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
         public async Task<ActionResult<LiqPayCheckoutResponse>> CreatePayment(int deliveryId)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -37,7 +39,8 @@ namespace DeliveryAPI.Api.Controllers
         }
 
         [HttpPost("webhook")]
-        public async Task<IActionResult> Webhook([FromForm] LiqPayWebhookRequest request)
+        [ProducesResponseType(200)]
+        public async Task<ActionResult> Webhook([FromForm] LiqPayWebhookRequest request)
         {
             _logger.LogInformation("Webhook data: {Data}", request.Data);
             _logger.LogInformation("Webhook signature: {Signature}", request.Signature);

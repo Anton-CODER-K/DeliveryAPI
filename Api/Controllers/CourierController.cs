@@ -4,6 +4,7 @@ using System.Security.Claims;
 using DeliveryAPI.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using DeliveryAPI.Application.Models.Result;
 
 namespace DeliveryAPI.Api.Controllers
 {
@@ -20,7 +21,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize(Roles = "Admin,Courier")]
         [HttpGet]
-        public async Task<IActionResult> GetDelivery([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DeliveryStatus deliveryStatus = DeliveryStatus.RestaurantConfirmed)
+        [ProducesResponseType(typeof(List<DeliveryUserResult>), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<List<DeliveryUserResult>>> GetDelivery([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DeliveryStatus deliveryStatus = DeliveryStatus.RestaurantConfirmed)
         {
             var delivery = await _deliveryService.GetDeliveriesByCourierAsync(page, pageSize, deliveryStatus);
 
@@ -28,8 +31,10 @@ namespace DeliveryAPI.Api.Controllers
         }
 
         [Authorize(Roles = "Courier")]
-        [HttpGet("/my")]
-        public async Task<IActionResult> GetDeliveryMyActive([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DeliveryStatus? deliveryStatus = null)
+        [HttpGet("my")]
+        [ProducesResponseType(typeof(List<DeliveryUserResult>), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<List<DeliveryUserResult>>> GetDeliveryMyActive([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DeliveryStatus? deliveryStatus = null)
         {
 
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -46,7 +51,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize(Roles = "Courier")]
         [HttpPut("{id}/accepted")]
-        public async Task<IActionResult> DeliveryAcceptedByCourier([FromRoute] int id)
+        [ProducesResponseType(typeof(string), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<string>> DeliveryAcceptedByCourier([FromRoute] int id)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
@@ -61,7 +68,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize(Roles = "Courier")]
         [HttpPut("{id}/pickedup")]
-        public async Task<IActionResult> DeliveryPickedUpByCourier([FromRoute] int id)
+        [ProducesResponseType(typeof(string), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<string>> DeliveryPickedUpByCourier([FromRoute] int id)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
@@ -76,7 +85,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize(Roles = "Courier")]
         [HttpPut("{id}/confirmations")]
-        public async Task<IActionResult> DeliveryConfirmationsByCourier([FromRoute] int id)
+        [ProducesResponseType(typeof(string), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<string>> DeliveryConfirmationsByCourier([FromRoute] int id)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)

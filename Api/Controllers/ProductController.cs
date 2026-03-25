@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using DeliveryAPI.Api.Contracts.Request;
+using DeliveryAPI.Api.Contracts.Response;
 using DeliveryAPI.Api.Middleware;
 using DeliveryAPI.Application.Exeptions;
 using DeliveryAPI.Application.Services;
@@ -21,7 +22,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize(Roles = "Admin,RestaurantUser")]
         [HttpPost]
-        public async Task<IActionResult> CreateProduct([FromBody] ProductCreateRequest request)
+        [ProducesResponseType(typeof(int), 201)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<int>> CreateProduct([FromBody] ProductCreateRequest request)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
@@ -41,16 +44,18 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize]
         [HttpGet]
-        public async Task<IActionResult> GetProducts([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] int? categoryId = null, [FromQuery] int? restaurantId = null)
+        [ProducesResponseType(typeof(List<ProductResponse>), 200)]
+        public async Task<ActionResult<List<ProductResponse>>> GetProducts([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] int? categoryId = null, [FromQuery] int? restaurantId = null)
         {
             var result = await _productService.GetProductsAsync(page, pageSize, categoryId, restaurantId);
 
             return Ok(result);
         }
 
-        [Authorize]
         [HttpPut("{productId}")]
-        public async Task<IActionResult> UpdateProduct([FromRoute] int productId, [FromBody] ProductUpdateRequest request)
+        [ProducesResponseType(204)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult> UpdateProduct([FromRoute] int productId, [FromBody] ProductUpdateRequest request)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
@@ -67,7 +72,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize(Roles = "Admin,RestaurantUser")]
         [HttpDelete("{productId}")]
-        public async Task<IActionResult> DeleteProduct([FromQuery] int productId)
+        [ProducesResponseType(204)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult> DeleteProduct([FromQuery] int productId)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)

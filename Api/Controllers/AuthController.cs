@@ -8,6 +8,7 @@ using System.Diagnostics.Contracts;
 using DeliveryAPI.Api.Middleware;
 using System.Security.Claims;
 using DeliveryAPI.Application.Exeptions;
+using DeliveryAPI.Application.Models.Result;
 
 namespace DeliveryAPI.Api.Controllers
 {
@@ -23,7 +24,8 @@ namespace DeliveryAPI.Api.Controllers
         }
 
         [HttpPost("start")]
-        public async Task<IActionResult> Start([FromBody] AuthStartRequest request)
+        [ProducesResponseType(typeof(string), 200)]
+        public async Task<ActionResult<string>> Start([FromBody] AuthStartRequest request)
         {
             await _authService.StartAsync(request.PhoneNumber);
 
@@ -31,14 +33,17 @@ namespace DeliveryAPI.Api.Controllers
         }
 
         [HttpPost("verify")]
-        public async Task<IActionResult> Verify([FromBody] AuthVerifyRequest request)
+        [ProducesResponseType(typeof(string), 200)]
+        public async Task<ActionResult<string>> Verify([FromBody] AuthVerifyRequest request)
         {
             var tokens = await _authService.VerifyAsync(request.PhoneNumber, request.Code);
             return Ok(tokens);
         }
 
         [HttpPost("set-password")]
-        public async Task<IActionResult> SetPassword([FromBody] AuthSetPasswordRequest request)
+        [ProducesResponseType(typeof(TokensResult), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<TokensResult>> SetPassword([FromBody] AuthSetPasswordRequest request)
         {
           
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -57,7 +62,8 @@ namespace DeliveryAPI.Api.Controllers
         }
 
         [HttpPost("refresh")]
-        public async Task<IActionResult> Refresh([FromBody] AuthRefreshRequest request)
+        [ProducesResponseType(typeof(TokensResult), 200)]
+        public async Task<ActionResult<TokensResult>> Refresh([FromBody] AuthRefreshRequest request)
         {
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
             var userAgent = Request.Headers["User-Agent"].ToString();
@@ -66,7 +72,8 @@ namespace DeliveryAPI.Api.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] AuthLoginRequest request)
+        [ProducesResponseType(typeof(object), 200)]
+        public async Task<ActionResult<object>> Login([FromBody] AuthLoginRequest request)
         {
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
             var userAgent = Request.Headers["User-Agent"].ToString();
@@ -78,7 +85,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize]
         [HttpGet("me")]
-        public async Task<IActionResult> Me()
+        [ProducesResponseType(typeof(TokensResult), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<TokensResult>> Me()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)

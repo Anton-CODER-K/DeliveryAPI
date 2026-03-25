@@ -4,6 +4,7 @@ using DeliveryAPI.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration.UserSecrets;
+using DeliveryAPI.Application.Models.Result;
 
 namespace DeliveryAPI.Api.Controllers
 {
@@ -20,7 +21,8 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize]
         [HttpGet]
-        public async Task<IActionResult> GetCategories()
+        [ProducesResponseType(typeof(List<CategoryGet>), 200)]
+        public async Task<ActionResult<List<CategoryGet>>> GetCategories()
         {
             var result = await _categoryService.GetCategoriesAsync();
             return Ok(result);
@@ -28,7 +30,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPost]
-        public async Task<IActionResult> CreateCategory([FromBody] string name)
+        [ProducesResponseType(typeof(int), 201)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<int>> CreateCategory([FromBody] string name)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
@@ -42,7 +46,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPut("{categoryId}")]
-        public async Task<IActionResult> UpdateCategory([FromRoute] int categoryId, [FromBody] string name)
+        [ProducesResponseType(204)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult> UpdateCategory([FromRoute] int categoryId, [FromBody] string name)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)

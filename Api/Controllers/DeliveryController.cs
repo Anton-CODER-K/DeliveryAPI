@@ -22,8 +22,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize]
         [HttpPost]
-        [ProducesResponseType(typeof(int), 200)]
-        public async Task<IActionResult> Create([FromBody] DeliveryCreateRequest request)
+        [ProducesResponseType(typeof(DeliveryCreateInput), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<DeliveryCreateInput>> Create([FromBody] DeliveryCreateRequest request)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
@@ -44,7 +45,7 @@ namespace DeliveryAPI.Api.Controllers
         [Authorize]
         [HttpGet("my")]
         [ProducesResponseType(typeof(DeliveryUserResult), 200)]
-        [ProducesResponseType(401)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
         public async Task<ActionResult<DeliveryUserResult>> GetDeliveriesByUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -57,9 +58,11 @@ namespace DeliveryAPI.Api.Controllers
             return Ok(result);
         }
 
-        [Authorize]
-        [HttpPut("{id}/accepted")]
-        public async Task<IActionResult> AcceptDeliveryByUser([FromRoute] int id)
+        [Authorize(Roles = "Courier")]
+        [HttpPut("{id}/confirmations")]
+        [ProducesResponseType(typeof(string), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<string>> DeliveryConfirmationsByCourier([FromRoute] int id)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)

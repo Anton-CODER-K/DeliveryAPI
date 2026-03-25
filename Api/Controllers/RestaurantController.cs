@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.HttpResults;
 using DeliveryAPI.Application.Enums;
+using DeliveryAPI.Application.Models.Result;
 
 namespace DeliveryAPI.Api.Controllers
 {
@@ -24,7 +25,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize(Roles = "RestaurantUser")]
         [HttpGet("deliveries")]
-        public async Task<IActionResult> GetDelivery([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DeliveryStatus? status = DeliveryStatus.Created)
+        [ProducesResponseType(typeof(List<DeliveryUserResult>), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<List<DeliveryUserResult>>> GetDelivery([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DeliveryStatus? status = DeliveryStatus.Created)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
@@ -38,7 +41,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize(Roles = "RestaurantUser")]
         [HttpPut("deliveries/{id}/confirm")]
-        public async Task<IActionResult> AcceptDelivery([FromRoute] int id)
+        [ProducesResponseType(typeof(string), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<string>> AcceptDelivery([FromRoute] int id)
         {
 
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -70,7 +75,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize(Roles = "RestaurantUser")]
         [HttpPut("deliveries/{id}/cancel")]
-        public async Task<IActionResult> CancelDelivery([FromRoute] int id)
+        [ProducesResponseType(typeof(string), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<string>> CancelDelivery([FromRoute] int id)
         {
 
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -86,7 +93,8 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize]
         [HttpGet]
-        public async Task<IActionResult> GetReastaurant([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery]int? categoryId = null)
+        [ProducesResponseType(typeof(List<string>), 200)]
+        public async Task<ActionResult<List<string>>> GetReastaurant([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery]int? categoryId = null)
         {
             var result = await _productService.GetRestaurantsAsync(page, pageSize, categoryId);
 
