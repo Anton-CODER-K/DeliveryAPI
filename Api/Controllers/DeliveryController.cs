@@ -44,11 +44,13 @@ namespace DeliveryAPI.Api.Controllers
         [Authorize]
         [HttpGet("my")]
         [ProducesResponseType(typeof(DeliveryUserResult), 200)]
-        public async Task<IActionResult> GetDeliveriesByUserId()
+        [ProducesResponseType(401)]
+        public async Task<ActionResult<DeliveryUserResult>> GetDeliveriesByUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
-                throw new UnauthorizedException("UserId claim missing");
+                return Unauthorized("UserId claim missing");
+
             int userId = int.Parse(userIdClaim.Value);
 
             var result = await _deliveryService.GetDeliveriesByUserIdAsync(userId);

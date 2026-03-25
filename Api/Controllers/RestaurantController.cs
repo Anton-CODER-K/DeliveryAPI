@@ -52,20 +52,20 @@ namespace DeliveryAPI.Api.Controllers
             return Ok("Delivery Accepted");
         }
 
-        [Authorize(Roles = "RestaurantUser")]
-        [HttpPut("deliveries/{id}/cooking")]
-        public async Task<IActionResult> CookingDelivery([FromRoute] int id)
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null)
-                throw new UnauthorizedException("UserId claim missing");
-            int userId = int.Parse(userIdClaim.Value);
+        //[Authorize(Roles = "RestaurantUser")]
+        //[HttpPut("deliveries/{id}/cooking")]
+        //public async Task<IActionResult> CookingDelivery([FromRoute] int id)
+        //{
+        //    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        //    if (userIdClaim == null)
+        //        throw new UnauthorizedException("UserId claim missing");
+        //    int userId = int.Parse(userIdClaim.Value);
 
 
-            await _deliveryService.CookingDeliveryByRestaurantAsync(userId, id);
+        //    await _deliveryService.CookingDeliveryByRestaurantAsync(userId, id);
 
-            return Ok("Delivery Canceled");
-        }
+        //    return Ok("Delivery Canceled");
+        //}
 
 
         [Authorize(Roles = "RestaurantUser")]
