@@ -960,7 +960,8 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 Select
                     d.user_id,
                     d.status_delivery_id,
-                    d.total_price
+                    d.total_price,
+                    d.payment_method_id
                 From delivery d
                 Where delivery_id = @deliveryId
                 Limit 1
@@ -978,7 +979,8 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 {
                     UserId = reader.GetInt32(0),
                     Status = reader.GetInt32(1),
-                    TotalPrice = reader.GetDecimal(2)
+                    TotalPrice = reader.GetDecimal(2),
+                    PaymentMethod = reader.GetInt32(3)
                 };
             }
 

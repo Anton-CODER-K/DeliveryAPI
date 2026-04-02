@@ -163,7 +163,7 @@ namespace DeliveryAPI.Application.Services
                 if (delivery.RestaurantId != restaurantId)
                     throw new ForbiddenException("You cannot manage this delivery");
 
-                if (delivery.Status != (int)DeliveryStatus.Created)
+                if (IsCanModifireDeliveryStatus(delivery.Status))
                     throw new BusinessException("INVALID_STATUS", "Delivery cannot be confirmed");
 
                 await _deliveryRepo.UpdateStatus(conn, tx, deliveryId,  DeliveryStatus.RestaurantConfirmed);
@@ -200,6 +200,37 @@ namespace DeliveryAPI.Application.Services
                 await _deliveryRepo.UpdateStatus(conn, tx, deliveryId, DeliveryStatus.Preparing);
 
                 _logger.LogInformation("User {UserId} by Restaurant {RestaurantId} Preparing delivery {DeliveryId}", userId, restaurantId, deliveryId);
+            });
+        }
+
+        public async Task ReadyDeliveryByRestaurantAsync(int userId, int deliveryId)
+        {
+            await _tx.ExecuteAsync(async (conn, tx) =>
+            {
+                int? restaurantId = await _productRepo.CheckUserIdInRestaurant(conn, tx, userId);
+
+                var delivery = await _deliveryRepo.GetRestaurantIdStatusPaymentByDeliveryId(conn, tx, deliveryId);
+
+                if (delivery == null)
+                    throw new BusinessException("NOT_FOUND", "Delivery not found");
+
+                if (restaurantId == null)
+                    throw new UnauthorizedException("UserId claim missing");
+
+                if (delivery.RestaurantId != restaurantId)
+                    throw new ForbiddenException("You cannot manage this delivery");
+
+                if (delivery.PaymentMethod == (int)PaymentsMethod.Card)
+                {
+                    if (delivery.StatusPayment != (int)PaymentStatus.Success)
+                        throw new BusinessException("INVALID_STATUS", "Delivery cannot be Cooking, Not paid");
+                }
+
+
+
+                await _deliveryRepo.UpdateStatus(conn, tx, deliveryId, DeliveryStatus.ReadyForPickup);
+
+                _logger.LogInformation("User {UserId} by Restaurant {RestaurantId} Ready delivery {DeliveryId}", userId, restaurantId, deliveryId);
             });
         }
 
@@ -418,6 +449,17 @@ namespace DeliveryAPI.Application.Services
             throw new BusinessException("TOO_HEAVY", "Maximum weight is 10kg");
         }
 
-        
+        private bool IsValidPaymentMethod(int paymentMethodId)
+        {
+            return paymentMethodId == (int)PaymentsMethod.Cash || paymentMethodId == (int)PaymentsMethod.Card;
+        }
+
+        private bool IsCanModifireDeliveryStatus(int status)
+        {
+            return status == (int)DeliveryStatus.Cancelled || status == (int)DeliveryStatus.Delivered;
+        }
+
+       
+
     }
 }

@@ -90,6 +90,37 @@ namespace DeliveryAPI.Infrastructure.Repositories
             };
         }
 
+        public async Task<Payment?> GetByDeliveryId(
+            NpgsqlConnection conn,
+            NpgsqlTransaction tx,
+            int deliveryId)
+        {
+            const string sql = """
+                SELECT payment_id, amount, status_id, delivery_id
+                FROM payments
+                WHERE delivery_id = @deliveryId
+                LIMIT 1
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer).Value = deliveryId;
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            if (!await reader.ReadAsync())
+                return null;
+
+            return new Payment
+            {
+                PaymentId = reader.GetInt32(0),
+                Amount = reader.GetDecimal(1),
+                Status = reader.GetInt32(2),
+                DeliveryId = reader.GetInt32(3)
+            };
+        }
+
+
         public async Task<bool> IsAlreadyPaid(
             NpgsqlConnection conn,
             NpgsqlTransaction tx,

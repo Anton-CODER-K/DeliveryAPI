@@ -40,11 +40,17 @@ namespace DeliveryAPI.Application.Services
                 if (delivery == null || delivery.UserId != userId)
                     throw new BusinessException("DELIVERY_NOT_FOUND", "Delivery not found");
 
-                var existingPayment = await _paymentRepo.GetPendingPayment(conn, tx, deliveryId);
+                if (delivery.PaymentMethod == (int)PaymentsMethod.Cash)
+                    throw new BusinessException("CASH_PAYMENT", "Delivery is marked for cash payment");
 
-                if (existingPayment != null)
+                var payment = await _paymentRepo.GetByDeliveryId(conn, tx, deliveryId);
+
+                if (payment != null)
                 {
-                    return _liqPay.CreateCheckout(existingPayment.PaymentId, existingPayment.Amount);
+                    if (payment.Status == (int)PaymentStatus.Success)
+                        throw new BusinessException("ALREADY_PAID", "Delivery is already paid");
+
+                    return _liqPay.CreateCheckout(payment.PaymentId, payment.Amount);
                 }
 
                 var paymentId = await _paymentRepo.CreatePayment(

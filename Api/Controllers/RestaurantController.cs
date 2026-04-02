@@ -57,20 +57,40 @@ namespace DeliveryAPI.Api.Controllers
             return Ok("Delivery Accepted");
         }
 
-        //[Authorize(Roles = "RestaurantUser")]
-        //[HttpPut("deliveries/{id}/cooking")]
-        //public async Task<IActionResult> CookingDelivery([FromRoute] int id)
-        //{
-        //    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-        //    if (userIdClaim == null)
-        //        throw new UnauthorizedException("UserId claim missing");
-        //    int userId = int.Parse(userIdClaim.Value);
+        [Authorize(Roles = "RestaurantUser")]
+        [HttpPut("deliveries/{id}/cooking")]
+        [ProducesResponseType(typeof(string), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<IActionResult> CookingDelivery([FromRoute] int id)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                throw new UnauthorizedException("UserId claim missing");
+            int userId = int.Parse(userIdClaim.Value);
 
 
-        //    await _deliveryService.CookingDeliveryByRestaurantAsync(userId, id);
+            await _deliveryService.PreparingDeliveryByRestaurantAsync(userId, id);
 
-        //    return Ok("Delivery Canceled");
-        //}
+            return Ok("Delivery Cooking");
+        }
+
+        [Authorize(Roles = "RestaurantUser")]
+        [HttpPut("deliveries/{id}/ready")]
+        [ProducesResponseType(typeof(string), 200)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<IActionResult> AlreadyCookingDelivery([FromRoute] int id)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                throw new UnauthorizedException("UserId claim missing");
+            int userId = int.Parse(userIdClaim.Value);
+
+
+            await _deliveryService.ReadyDeliveryByRestaurantAsync(userId, id);
+
+            return Ok("Delivery Ready To Picked");
+        }
+
 
 
         [Authorize(Roles = "RestaurantUser")]
