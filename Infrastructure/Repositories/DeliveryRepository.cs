@@ -218,7 +218,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 Join
                     payments p On p.delivery_id = d.delivery_id
                 Where
-                    delivery_id = @deliveryId
+                    d.delivery_id = @deliveryId
                 Limit 1
 
                 """;
