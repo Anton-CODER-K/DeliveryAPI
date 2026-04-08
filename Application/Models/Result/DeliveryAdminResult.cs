@@ -12,6 +12,8 @@
 
         public string StatusDelivery { get; set; }
 
+        public string StatusPayment { get; set; }
+
         public string PaymentMethod { get; set; }
 
         public decimal TotalPrice { get; set; }

@@ -495,6 +495,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                     d.courier_user_id,
                     d.restaurant_id,
                     sd.name,
+                    ps.name,
                     pm.name,
                     d.total_price,
                     d.subtotal_amount,
@@ -510,6 +511,8 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 JOIN delivery_items di ON di.delivery_id = d.delivery_id
                 JOIN status_delivery sd ON sd.status_delivery_id = d.status_delivery_id
                 JOIN payment_method pm ON pm.payment_method_id = d.payment_method_id
+                Left Join payments p On p.delivery_id = d.delivery_id
+                Left Join payment_statuses ps On ps.Id = p.status_id 
                 ORDER BY d.created_at DESC;
                 """;
 
@@ -535,23 +538,24 @@ namespace DeliveryAPI.Infrastructure.Repositories
                         CourierId = reader.IsDBNull(2) ? null : reader.GetInt32(2),
                         RestaurantId = reader.GetInt32(3),
                         StatusDelivery = reader.GetString(4),
-                        PaymentMethod = reader.GetString(5),
-                        TotalPrice = reader.GetDecimal(6),
-                        ProductPrice = reader.GetDecimal(7),
-                        DeliveryFee = reader.GetDecimal(8),
-                        CommissionsAmount = reader.GetDecimal(9),
-                        CommissionPercent = reader.GetDecimal(10),
-                        Total_weight_grams = reader.GetInt32(11),
-                        CreatedAt = reader.GetDateTime(12),
+                        StatusPayment = reader.GetString(5),
+                        PaymentMethod = reader.GetString(6),
+                        TotalPrice = reader.GetDecimal(7),
+                        ProductPrice = reader.GetDecimal(8),
+                        DeliveryFee = reader.GetDecimal(9),
+                        CommissionsAmount = reader.GetDecimal(10),
+                        CommissionPercent = reader.GetDecimal(11),
+                        Total_weight_grams = reader.GetInt32(12),
+                        CreatedAt = reader.GetDateTime(13),
                         Items = new List<DeliveryUserItem>()
                     };
                 }
 
                 deliveries[deliveryId].Items.Add(new DeliveryUserItem
                 {
-                    ProductName = reader.GetString(13),
-                    Quantity = reader.GetInt32(14),
-                    TotalLineAmount = reader.GetDecimal(15)
+                    ProductName = reader.GetString(14),
+                    Quantity = reader.GetInt32(15),
+                    TotalLineAmount = reader.GetDecimal(16)
                 });
 
             }
