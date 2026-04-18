@@ -1,16 +1,18 @@
-using System.Text;
 using DeliveryAPI.Api.Middleware;
 using DeliveryAPI.Application.FakeSmsSender;
+using DeliveryAPI.Application.Interfaces;
 using DeliveryAPI.Application.Services;
 using DeliveryAPI.Application.Verification;
 using DeliveryAPI.Infrastructure.Database;
 using DeliveryAPI.Infrastructure.Repositories;
+using DeliveryAPI.Infrastructure.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Connections;
-using Microsoft.IdentityModel.Tokens;
-using Serilog.Sinks.Seq;
-using Serilog;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.IdentityModel.Tokens;
+using Serilog;
+using Serilog.Sinks.Seq;
+using System.Text;
 
 namespace DeliveryAPI.Api
 {
@@ -95,6 +97,10 @@ namespace DeliveryAPI.Api
 
             // Database infra
             builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
+
+            builder.Services.AddSingleton<IImageStorage>(new LocalImageStorage("/var/www/delivery/images"));
+
+
             builder.Services.AddScoped<TransactionExecutor>();
 
 

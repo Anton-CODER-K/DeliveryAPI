@@ -1,6 +1,5 @@
 ﻿namespace DeliveryAPI.Application.Enums
 {
-    
     public enum PaymentsMethod
     {
         Cash = 1,

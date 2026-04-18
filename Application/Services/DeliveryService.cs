@@ -365,7 +365,7 @@ namespace DeliveryAPI.Application.Services
 
             _logger.LogInformation("Courier {UserId} confirmed delivery {DeliveryId}", courierId, deliveryId);
         }
-
+        // UNDONE: Подумати нащот того шо ламаєся система якщо курєр підтвердив своє же замовлення бо в базі є обмеження на різні користувачі до однієї доставки тоіість буде конфлікт 
         public async Task AcceptDeliveryByUserAsync(int deliveryId, int userId)
         {
             await _tx.ExecuteAsync(async (conn, tx) =>

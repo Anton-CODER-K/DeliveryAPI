@@ -72,7 +72,7 @@ namespace DeliveryAPI.Api.Controllers
         }
 
         [HttpPost("login")]
-        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(TokensResult), 200)]
         public async Task<ActionResult<object>> Login([FromBody] AuthLoginRequest request)
         {
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();

@@ -3,6 +3,7 @@ using DeliveryAPI.Api.Contracts.Response;
 using DeliveryAPI.Api.Middleware;
 using DeliveryAPI.Application.Exeptions;
 using DeliveryAPI.Infrastructure.Entity.ReadModel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Npgsql;
 using NpgsqlTypes;
@@ -317,6 +318,50 @@ namespace DeliveryAPI.Infrastructure.Repositories
             }
 
             return list;
+        }
+
+        public async Task<ProductToAddPhoto?> GetByIdToAddPhoto(NpgsqlConnection conn, NpgsqlTransaction tx, int productId)
+        {
+            const string sql = """
+                SELECT product_id, i.folder
+                FROM product p
+                Join images i on i.image_id = p.image_id
+                WHERE product_id = @productId
+                LIMIT 1;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+            cmd.Parameters.Add("@productId", NpgsqlDbType.Integer).Value = productId;
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                return new ProductToAddPhoto
+                {
+                    Id = reader.GetInt32(0),
+                    ImageUrl = reader.IsDBNull(1) ? null : reader.GetString(1)
+                };
+            }
+
+            return null;
+        }
+
+        public async Task<int> UpdateProductPathFolder(NpgsqlConnection conn, NpgsqlTransaction tx, int productId, string imageUrl)
+        {
+            const string sql = """
+                Update images i
+                   Set folder = @folder
+                   From product p
+                   Where p.product_id = @productId
+                     And p.image_id = i.image_id;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+            cmd.Parameters.Add("@productId", NpgsqlDbType.Integer).Value = productId;
+            cmd.Parameters.Add("@folder", NpgsqlDbType.Varchar).Value = imageUrl;
+
+            return await cmd.ExecuteNonQueryAsync();
         }
     }
 }

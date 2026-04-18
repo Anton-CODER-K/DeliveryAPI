@@ -1,11 +1,12 @@
-﻿using System.Security.Claims;
-using DeliveryAPI.Api.Contracts.Request;
+﻿using DeliveryAPI.Api.Contracts.Request;
 using DeliveryAPI.Api.Contracts.Response;
 using DeliveryAPI.Api.Middleware;
 using DeliveryAPI.Application.Exeptions;
 using DeliveryAPI.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Data;
+using System.Security.Claims;
 
 namespace DeliveryAPI.Api.Controllers
 {
@@ -19,6 +20,9 @@ namespace DeliveryAPI.Api.Controllers
         {
             _productService = productService;
         }
+
+
+        // UNDONE: Треба буде додати в DTO фото і в сервісі обробку фото, але поки що так
 
         [Authorize(Roles = "Admin,RestaurantUser")]
         [HttpPost]
@@ -42,6 +46,7 @@ namespace DeliveryAPI.Api.Controllers
             return CreatedAtAction(nameof(CreateProduct), new { id = result }, new { productId = result });
         }
 
+        // UNDONE: Додати видачу шляха фоток, але поки що так
         [Authorize]
         [HttpGet]
         [ProducesResponseType(typeof(List<ProductResponse>), 200)]
@@ -89,6 +94,39 @@ namespace DeliveryAPI.Api.Controllers
             return NoContent();
 
 
+        }
+
+        // UNDONE: Треба буде додати в DTO фото і в сервісі обробку фото, але поки що так
+        [Authorize(Roles = "Admin,RestaurantUser")]
+        [HttpPut("{productId}/image")]
+        public async Task<ActionResult> UploadProductImage([FromRoute] int productId, [FromForm] IFormFile image)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                throw new UnauthorizedException("UserId claim missing");
+            var roleClaim = User.FindFirst(ClaimTypes.Role);
+            if (roleClaim == null)
+                throw new UnauthorizedException("Role claim missing");
+            int userId = int.Parse(userIdClaim.Value);
+            string role = roleClaim.Value;
+
+
+            var result = await _productService.UploadProductImageAsync(productId, image, userId, role);
+            return Ok(result);
+        }
+
+        [Authorize(Roles = "Admin,RestaurantUser")]
+        [HttpDelete("{productId}/image")]
+        public async Task<ActionResult> DeleteProductImage([FromRoute] int productId)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                throw new UnauthorizedException("UserId claim missing");
+            
+            int userId = int.Parse(userIdClaim.Value);
+
+            var result = await _productService.DeleteProductImageAsync(productId, userId);
+            return Ok(result);
         }
     }
 }
