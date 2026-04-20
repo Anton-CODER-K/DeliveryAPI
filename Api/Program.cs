@@ -102,10 +102,11 @@ namespace DeliveryAPI.Api
             // Database infra
             builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
 
-            builder.Services.AddSingleton<IImageStorage>(
-    new LocalImageStorage(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images"))
-);
+            var imagePath = builder.Configuration["ImageStorage:Path"];
 
+            builder.Services.AddSingleton<IImageStorage>(
+                new LocalImageStorage(imagePath)
+            );
 
             builder.Services.AddScoped<TransactionExecutor>();
 
