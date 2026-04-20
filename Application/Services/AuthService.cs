@@ -1,22 +1,30 @@
-﻿using DeliveryAPI.Application.Models.Input;
-using DeliveryAPI.Infrastructure.Database;
-using DeliveryAPI.Infrastructure.Repositories;
-using DeliveryAPI.Infrastructure.Entity.Record;
-using Microsoft.AspNetCore.Mvc;
-using System.Text.RegularExpressions;
+﻿using DeliveryAPI.Api.Contracts.Request;
 using DeliveryAPI.Api.Middleware;
-using Npgsql;
-using DeliveryAPI.Application.FakeSmsSender;
-using DeliveryAPI.Application.Verification;
-using System.Text;
-using System.Security.Cryptography;
-using DeliveryAPI.Api.Contracts.Request;
-using Microsoft.AspNetCore.Authentication.OAuth;
-using System.Runtime.InteropServices;
-using DeliveryAPI.Application.Models.Result;
-using System.Globalization;
-using DeliveryAPI.Infrastructure.Entity.ReadModel;
 using DeliveryAPI.Application.Exeptions;
+using DeliveryAPI.Application.FakeSmsSender;
+using DeliveryAPI.Application.Interfaces;
+using DeliveryAPI.Application.Models.Input;
+using DeliveryAPI.Application.Models.Result;
+using DeliveryAPI.Application.Verification;
+using DeliveryAPI.Infrastructure.Database;
+using DeliveryAPI.Infrastructure.Entity.ReadModel;
+using DeliveryAPI.Infrastructure.Entity.Record;
+using DeliveryAPI.Infrastructure.Repositories;
+using DeliveryAPI.Infrastructure.Storage;
+using Microsoft.AspNetCore.Authentication.OAuth;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Npgsql;
+using SixLabors.ImageSharp;
+using System.Data;
+using System.Globalization;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Channels;
+using System.Xml.Linq;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace DeliveryAPI.Application.Services
 {
@@ -28,9 +36,10 @@ namespace DeliveryAPI.Application.Services
         private readonly IVerificationCodeGenerator _codeGenerator;
         private readonly IVerificationMessageBuilder _messageBuilder;
         private readonly INotificationSender _notificationSender;
+        private readonly IImageStorage _imageStorage;
         private readonly ILogger<DeliveryService> _logger;
 
-        public AuthService(JwtService jwtService, AuthRepository AuthRepo, TransactionExecutor transactionExecutor, IVerificationCodeGenerator codeGenerator, IVerificationMessageBuilder messageBuilder, INotificationSender notificationSender, ILogger<DeliveryService> logger)
+        public AuthService(JwtService jwtService, AuthRepository AuthRepo, TransactionExecutor transactionExecutor, IVerificationCodeGenerator codeGenerator, IVerificationMessageBuilder messageBuilder, INotificationSender notificationSender, ILogger<DeliveryService> logger, IImageStorage imageStorage)
         {
             _jwtService = jwtService;
             _authRepo = AuthRepo;
@@ -38,6 +47,7 @@ namespace DeliveryAPI.Application.Services
             _codeGenerator = codeGenerator;
             _messageBuilder = messageBuilder;
             _notificationSender = notificationSender;
+            _imageStorage = imageStorage;
             _logger = logger;
         }
 
@@ -313,13 +323,57 @@ namespace DeliveryAPI.Application.Services
                 UserId = userResult.UserId,
                 Phone = userResult.Phone,
                 Name = userResult.Name,
+                AvatarUrl = "http://37.27.220.44/images/" + userResult.AvatarUrl + "/thumb.jpg",
                 Role = role
             };
-        } 
-        
+        }
+
+        public async Task UploadPhotoAsync(int userId, IFormFile image)
+        {
+            LocalImageStorage.IsImage(image);
+
+            string? newImageFolder = null;
+            int result = 0;
+
+            await _tx.ExecuteAsync(async (conn, tx) =>
+            {
+                try
+                {
+                    var oldImageFolder = await _authRepo.GetUserById(conn, tx, userId);
+
+                    await using var stream = image.OpenReadStream();
+
+                    var imageResult = await _imageStorage.SaveImageAsync(stream, "users");
+
+                    newImageFolder = imageResult.Folder;
+
+                    await _authRepo.UpdateUserPathFolder(conn, tx, userId, newImageFolder);
+
+                    if (!string.IsNullOrEmpty(oldImageFolder.AvatarUrl))
+                    {
+                        await _imageStorage.DeleteImageAsync(oldImageFolder.AvatarUrl);
+                    }
+                }
+                catch
+                {
+                    if (!string.IsNullOrEmpty(newImageFolder))
+                    {
+                        await _imageStorage.DeleteImageAsync(newImageFolder);
+                    }
+
+                    throw;
+                }
+            });
+
+        }
+
+
+
+
+
         //public async Task<List<GetSessionsResult>> GetSessionsUserIdAsync(int userId)
         //{
-            
+
         //}
 
         //public async Task<AuthTokensResponse> CompleteRegistrationAsync(string verificationToken, AuthSetPasswordRequest request, string ip, string userAgent)
@@ -394,8 +448,6 @@ namespace DeliveryAPI.Application.Services
             var bytes = Encoding.UTF8.GetBytes(token);
             return Convert.ToHexString(sha.ComputeHash(bytes));
         }
-
-       
     }
 
     

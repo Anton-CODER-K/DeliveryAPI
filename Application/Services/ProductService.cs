@@ -7,6 +7,7 @@ using DeliveryAPI.Application.Models.Result;
 using DeliveryAPI.Infrastructure.Database;
 using DeliveryAPI.Infrastructure.Entity.ReadModel;
 using DeliveryAPI.Infrastructure.Repositories;
+using DeliveryAPI.Infrastructure.Storage;
 using System.Collections.Generic;
 using System.Data;
 using System.Xml.Linq;
@@ -28,9 +29,14 @@ namespace DeliveryAPI.Application.Services
             _imageStorage = imageStorage;
         }
 
-        public async Task<int> CreateProductAsync(string name, decimal price, int weightGrams, int categoryId, string description, int restaurantId, int userId, string role)
+        public async Task<int> CreateProductAsync(string name, decimal price, int weightGrams, int categoryId, string description, int restaurantId, IFormFile image, int userId, string role)
         {
+            LocalImageStorage.IsImage(image);
+
             int result = 0;
+
+            string? newImageFolder = null;
+
 
             await _tx.ExecuteAsync(async (conn, tx) =>
             {
@@ -50,7 +56,28 @@ namespace DeliveryAPI.Application.Services
                     throw new BusinessException("CATEGORY NOT FOUND", "The specified category does not exist.");
                 }
 
-                result = await _productRepo.InsertProduct(conn, tx, name, price, weightGrams, categoryId, description, restaurantId);
+
+                try
+                {
+                    result = await _productRepo.InsertProduct(conn, tx, name, price, weightGrams, categoryId, description, restaurantId);
+
+                    await using var stream = image.OpenReadStream();
+
+                    var imageResult = await _imageStorage.SaveImageAsync(stream, "products");
+
+                    newImageFolder = imageResult.Folder;
+
+                    await _productRepo.UpdateProductPathFolder(conn, tx, result, newImageFolder);
+                }
+                catch
+                {
+                    if (!string.IsNullOrEmpty(newImageFolder))
+                    {
+                        await _imageStorage.DeleteImageAsync(newImageFolder);
+                    }
+
+                    throw;
+                }
             });
 
             return result;
@@ -156,7 +183,7 @@ namespace DeliveryAPI.Application.Services
 
         public async Task<ProductToAddPhoto?> GetByIdToAddPhotoAsync(int productId)
         {
-            ProductToAddPhoto product = null;
+            ProductToAddPhoto? product = null;
             await _tx.ExecuteAsync(async (conn, tx) =>
             {
                 product = await _productRepo.GetByIdToAddPhoto(conn, tx, productId);
@@ -167,13 +194,12 @@ namespace DeliveryAPI.Application.Services
 
         public async Task<ImageVariants> UploadProductImageAsync(int productId, IFormFile image, int userId, string role)
         {
-            if (image == null || image.Length == 0)
-                throw new Exception("Image is empty");
+            LocalImageStorage.IsImage(image);
 
             var product = await GetByIdToAddPhotoAsync(productId);
 
             if (product == null)
-                throw new Exception("Product not found");
+                throw new BusinessException("PRODUCT NOT FOUND", "Product not found");
 
             ImageVariants result = null;
 
@@ -202,15 +228,9 @@ namespace DeliveryAPI.Application.Services
 
                     var oldImagePath = product.ImageUrl;
 
-                    product.ImageUrl = newImageUrl;
+                    product.ImageUrl = result.Folder;
 
                     int rows = await _productRepo.UpdateProductPathFolder(conn, tx, product.Id, product.ImageUrl);
-
-                    if(rows == 0)
-                    {
-                        throw new BusinessException("FAILED TO UPDATE PRODUCT", "Failed to update product with new image URL");
-                    }
-
 
                     if (!string.IsNullOrEmpty(oldImagePath))
                     {
@@ -237,26 +257,27 @@ namespace DeliveryAPI.Application.Services
 
         public async Task<string> DeleteProductImageAsync(int productId, int userId)
         {
-            var product = await GetByIdAsync(productId);
+            //var product = await GetByIdAsync(productId);
 
-            if (product == null)
-                throw new Exception("Product not found");
+            //if (product == null)
+            //    throw new Exception("Product not found");
 
-            if (!await _permissionService.CanEditProduct(userId, product))
-                throw new Exception("No access");
+            //if (!await _permissionService.CanEditProduct(userId, product))
+            //    throw new Exception("No access");
 
-            if (string.IsNullOrEmpty(product.ImageUrl))
-                throw new Exception("Product has no image");
+            //if (string.IsNullOrEmpty(product.ImageUrl))
+            //    throw new Exception("Product has no image");
 
-            try
-            {
+            //try
+            //{
 
 
-            }
-            catch (Exception ex)
-            {
-                // Логування помилки
-            }
+            //}
+            //catch (Exception ex)
+            //{
+            //    // Логування помилки
+            //}
+            return "Not implemented";
         }
     }
 }

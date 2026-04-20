@@ -32,6 +32,10 @@ namespace DeliveryAPI.Api
             var builder = WebApplication.CreateBuilder(args);
 
             builder.Host.UseSerilog();
+            builder.WebHost.ConfigureKestrel(options =>
+            {
+                options.Limits.MaxRequestBodySize = 5 * 1024 * 1024; // 5 MB
+            });
 
             // Add services to the container.
 
@@ -98,7 +102,9 @@ namespace DeliveryAPI.Api
             // Database infra
             builder.Services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
 
-            builder.Services.AddSingleton<IImageStorage>(new LocalImageStorage("/var/www/delivery/images"));
+            builder.Services.AddSingleton<IImageStorage>(
+    new LocalImageStorage(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images"))
+);
 
 
             builder.Services.AddScoped<TransactionExecutor>();

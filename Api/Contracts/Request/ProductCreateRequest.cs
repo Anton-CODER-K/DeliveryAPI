@@ -22,5 +22,8 @@ namespace DeliveryAPI.Api.Contracts.Request
 
         [Required]
         public int RestaurantId { get; set; }
+
+        [Required]
+        public IFormFile Image { get; set; }
     }
 }

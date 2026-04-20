@@ -1,8 +1,10 @@
-﻿using DeliveryAPI.Application.Interfaces;
+﻿using DeliveryAPI.Application.Exeptions;
+using DeliveryAPI.Application.Interfaces;
 using DeliveryAPI.Application.Models.Result;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Processing;
+
 
 
 namespace DeliveryAPI.Infrastructure.Storage
@@ -50,6 +52,7 @@ namespace DeliveryAPI.Infrastructure.Storage
 
             return new ImageVariants
             {
+                Folder = $"{folder}/{id}",
                 Original = $"/images/{folder}/{id}/original.jpg",
                 Medium = $"/images/{folder}/{id}/medium.jpg",
                 Thumb = $"/images/{folder}/{id}/thumb.jpg"
@@ -58,12 +61,27 @@ namespace DeliveryAPI.Infrastructure.Storage
 
         public Task DeleteImageAsync(string folderPath)
         {
-            var fullPath = Path.Combine(_basePath, folderPath.Replace("/images/", ""));
+            var fullPath = Path.Combine(_basePath, folderPath);
 
             if (Directory.Exists(fullPath))
                 Directory.Delete(fullPath, true);
 
             return Task.CompletedTask;
+        }
+
+
+        public static bool IsImage(IFormFile image)
+        {
+            if (image == null || image.Length == 0)
+                throw new BusinessException("EMPTY", "Image is empty");
+
+            if (image.Length > 5 * 1024 * 1024)
+                throw new BusinessException("TOO LARGE", "Max size 5MB");
+
+            if (!image.ContentType.StartsWith("image/"))
+                throw new BusinessException("INVALID TYPE", "Only images allowed");
+
+            return true;
         }
     }
 }

@@ -484,8 +484,10 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 Select 
                     u.user_id,
                     u.phone_number,
-                    u.name
+                    u.name,
+                    i.folder as avatar_url
                 From users u
+                Left Join images i on i.image_id = u.image_id
                 Where u.user_id = @userId
                     and u.is_active = true
                     and u.is_phone_verified = true
@@ -502,13 +504,44 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 {
                     UserId = reader.GetInt32(0),
                     Phone = reader.GetString(1),
-                    Name = reader.GetString(2)
+                    Name = reader.GetString(2),
+                    AvatarUrl = reader.IsDBNull(3) ? null : reader.GetString(3)
                 };
             }
 
             return null;
         }
 
-        
+        public async Task<int> UpdateUserPathFolder(NpgsqlConnection conn, NpgsqlTransaction tx, int userId, string folder)
+        {
+            const string sql = """
+                WITH new_image AS (
+                    INSERT INTO images (folder)
+                    SELECT @folder
+                    FROM users u
+                    WHERE u.user_id = @userId
+                      AND u.image_id IS NULL
+                    RETURNING image_id
+                ),
+                updated_user AS (
+                    UPDATE users u
+                    SET image_id = COALESCE(
+                        (SELECT image_id FROM new_image),
+                        u.image_id
+                    )
+                    WHERE u.user_id = @userId
+                    RETURNING u.image_id
+                )
+                UPDATE images i
+                SET folder = @folder
+                WHERE i.image_id = (SELECT image_id FROM updated_user);
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+            cmd.Parameters.Add("@userId", NpgsqlDbType.Integer).Value = userId;
+            cmd.Parameters.Add("@folder", NpgsqlDbType.Varchar).Value = folder;
+
+            return await cmd.ExecuteNonQueryAsync();
+        }
     }
 }

@@ -9,5 +9,6 @@
         public int CategoryId { get; set; }
         public string Description { get; set; }
         public int RestaurantId { get; set; }
+        public string URLBase { get; set; }
     }
 }

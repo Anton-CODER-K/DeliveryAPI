@@ -5,5 +5,6 @@
         public int UserId { get; set; }
         public string Phone { get; set; }
         public string Name { get; set; }
+        public string? AvatarUrl { get; internal set; }
     }
 }

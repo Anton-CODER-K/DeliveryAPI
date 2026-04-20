@@ -85,7 +85,7 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize]
         [HttpGet("me")]
-        [ProducesResponseType(typeof(TokensResult), 200)]
+        [ProducesResponseType(typeof(MeResult), 200)]
         [ProducesResponseType(typeof(ProblemDetails), 401)]
         public async Task<ActionResult<TokensResult>> Me()
         {
@@ -104,10 +104,38 @@ namespace DeliveryAPI.Api.Controllers
             return Ok(result);
         }
 
-         
+        [Authorize]
+        [HttpPost("photo")]
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult> UploadPhoto([FromForm] AuthUploadPhotoRequest request)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                throw new UnauthorizedException("UserId claim missing");
+            int userId = int.Parse(userIdClaim.Value);
+            await _authService.UploadPhotoAsync(userId, request.Photo);
+            return Ok("Photo Update");
+        }
 
 
 
+
+        // UNDONE: Треба буде додати в сервісі видалення Юзера бо так требує Apple, але поки що так 
+        [Authorize]
+        [HttpDelete("me")]
+        public async Task<ActionResult> DeleteMe()
+        {
+            //var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            //if (userIdClaim == null)
+            //    throw new UnauthorizedException("UserId claim missing");
+
+            //int userId = int.Parse(userIdClaim.Value);
+
+            //await _authService.DeleteMeAsync(userId);
+            return NoContent();
+        }
+
+        // UNDONE: Треба буде додати в сервісі видалення сесії, але поки що так
         //[Authorize]
         //[HttpGet("sessions")]
         //public async Task<IActionResult> GetSessions()

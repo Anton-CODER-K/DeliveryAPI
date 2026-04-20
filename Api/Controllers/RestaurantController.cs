@@ -23,6 +23,8 @@ namespace DeliveryAPI.Api.Controllers
             _productService = productService;
         }
 
+
+
         [Authorize(Roles = "RestaurantUser")]
         [HttpGet("deliveries")]
         [ProducesResponseType(typeof(List<DeliveryUserResult>), 200)]
@@ -111,6 +113,8 @@ namespace DeliveryAPI.Api.Controllers
             return Ok("Delivery Canceled");
         }
 
+        // Undone:  Фотки для категорій витягувати
+
         [Authorize]
         [HttpGet]
         [ProducesResponseType(typeof(List<string>), 200)]
@@ -120,6 +124,9 @@ namespace DeliveryAPI.Api.Controllers
 
             return Ok(result);
         }
+
+
+        // Undone:  Фотки для категорій добавити 
 
     }
 }

@@ -17,6 +17,7 @@ namespace DeliveryAPI.Application.Services
             _logger = logger;
         }
 
+      
         public async Task<List<CategoryGet>> GetCategoriesAsync()
         {
             
@@ -39,10 +40,12 @@ namespace DeliveryAPI.Application.Services
                 result = await _categoryRepository.InsertCategory(conn, tx, name);
             });
 
+            _logger.LogInformation("User {userId} create delivery {deliveryId}", userId, result);
+
             return result;
 
-            _logger.LogInformation("User {userId} create delivery {deliveryId}", userId, result);
         }
+
 
         public async Task UpdateCategoryAsync(int categoryId, string name, int userId)
         {

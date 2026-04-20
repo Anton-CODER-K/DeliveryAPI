@@ -18,7 +18,9 @@ namespace DeliveryAPI.Api.Controllers
         {
             _categoryService = categoryService;
         }
-
+       
+        
+        // Undone: Фотки для категорій витягувати
         [Authorize]
         [HttpGet]
         [ProducesResponseType(typeof(List<CategoryGet>), 200)]
@@ -43,7 +45,7 @@ namespace DeliveryAPI.Api.Controllers
 
             return CreatedAtAction(nameof(CreateCategory), new { id = result }, new { productId = result });
         }
-
+       
         [Authorize(Roles = "Admin")]
         [HttpPut("{categoryId}")]
         [ProducesResponseType(204)]
@@ -59,5 +61,7 @@ namespace DeliveryAPI.Api.Controllers
 
             return NoContent();
         }
+
+        // Undone:  Фотки для категорій добавити 
     }
 }

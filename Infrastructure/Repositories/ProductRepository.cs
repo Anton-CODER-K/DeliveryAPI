@@ -91,12 +91,13 @@ namespace DeliveryAPI.Infrastructure.Repositories
         public async Task<List<ProductResponse>> GetProducts(NpgsqlConnection conn, NpgsqlTransaction tx, int offset, int pageSize, int? categoryId, int? restaurantId)  
         {
             const string sql = """
-                SELECT product_id, name, price, weight_grams, category_id, restaurant_id, description
-                FROM product
-                WHERE (@categoryId IS NULL OR category_id = @categoryId)
-                AND (@restaurantId IS NULL OR restaurant_id = @restaurantId)
-                And is_active = true
-                ORDER BY product_id DESC
+                SELECT p.product_id, p.name, p.price, p.weight_grams, p.category_id, p.restaurant_id, p.description, i.folder
+                FROM product p
+                Left Join images i On i.image_id = p.image_id 
+                WHERE (@categoryId IS NULL OR p.category_id = @categoryId)
+                AND (@restaurantId IS NULL OR p.restaurant_id = @restaurantId)
+                And p.is_active = true
+                ORDER BY p.product_id DESC
                 LIMIT @limit OFFSET @offset;
                 """;
 
@@ -121,7 +122,8 @@ namespace DeliveryAPI.Infrastructure.Repositories
                     WeightGrams = reader.GetInt32(3),
                     CategoryId = reader.GetInt32(4),
                     RestaurantId = reader.GetInt32(5),
-                    Description = reader.IsDBNull(6) ? null : reader.GetString(6)
+                    Description = reader.IsDBNull(6) ? null : reader.GetString(6),
+                    URLBase = reader.IsDBNull(7) ? null : ("http://37.27.220.44/images/" + reader.GetString(7) + "/thumb.jpg"),
                 });
             }
 
@@ -325,7 +327,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
             const string sql = """
                 SELECT product_id, i.folder
                 FROM product p
-                Join images i on i.image_id = p.image_id
+                Left Join images i on i.image_id = p.image_id
                 WHERE product_id = @productId
                 LIMIT 1;
                 """;
@@ -350,11 +352,26 @@ namespace DeliveryAPI.Infrastructure.Repositories
         public async Task<int> UpdateProductPathFolder(NpgsqlConnection conn, NpgsqlTransaction tx, int productId, string imageUrl)
         {
             const string sql = """
-                Update images i
-                   Set folder = @folder
-                   From product p
-                   Where p.product_id = @productId
-                     And p.image_id = i.image_id;
+                WITH new_image AS (
+                    INSERT INTO images (folder)
+                    SELECT @folder
+                    FROM product p
+                    WHERE p.product_id = @productId
+                      AND p.image_id IS NULL
+                    RETURNING image_id
+                ),
+                updated_product AS (
+                    UPDATE product p
+                    SET image_id = COALESCE(
+                        (SELECT image_id FROM new_image),
+                        p.image_id
+                    )
+                    WHERE p.product_id = @productId
+                    RETURNING p.image_id
+                )
+                UPDATE images i
+                SET folder = @folder
+                WHERE i.image_id = (SELECT image_id FROM updated_product);
                 """;
 
             await using var cmd = new NpgsqlCommand(sql, conn, tx);

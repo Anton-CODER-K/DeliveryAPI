@@ -28,7 +28,8 @@ namespace DeliveryAPI.Api.Controllers
         [HttpPost]
         [ProducesResponseType(typeof(int), 201)]
         [ProducesResponseType(typeof(ProblemDetails), 401)]
-        public async Task<ActionResult<int>> CreateProduct([FromBody] ProductCreateRequest request)
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult<int>> CreateProduct([FromForm] ProductCreateRequest request)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
@@ -41,7 +42,7 @@ namespace DeliveryAPI.Api.Controllers
             int userId = int.Parse(userIdClaim.Value);
             string role = roleClaim.Value;
 
-            int result = await _productService.CreateProductAsync(request.Name, request.Price, request.WeightGrams, request.CategoryId, request.Description, request.RestaurantId, userId, role);
+            int result = await _productService.CreateProductAsync(request.Name, request.Price, request.WeightGrams, request.CategoryId, request.Description, request.RestaurantId, request.Image, userId, role);
 
             return CreatedAtAction(nameof(CreateProduct), new { id = result }, new { productId = result });
         }
@@ -98,8 +99,9 @@ namespace DeliveryAPI.Api.Controllers
 
         // UNDONE: Треба буде додати в DTO фото і в сервісі обробку фото, але поки що так
         [Authorize(Roles = "Admin,RestaurantUser")]
-        [HttpPut("{productId}/image")]
-        public async Task<ActionResult> UploadProductImage([FromRoute] int productId, [FromForm] IFormFile image)
+        [HttpPut("image")]
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult> UploadProductImage([FromForm] UploadProductImageRequest request)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
@@ -111,7 +113,7 @@ namespace DeliveryAPI.Api.Controllers
             string role = roleClaim.Value;
 
 
-            var result = await _productService.UploadProductImageAsync(productId, image, userId, role);
+            var result = await _productService.UploadProductImageAsync(request.ProductId, request.Image, userId, role);
             return Ok(result);
         }
 
