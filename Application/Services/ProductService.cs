@@ -181,9 +181,9 @@ namespace DeliveryAPI.Application.Services
             });
         }
 
-        public async Task<ProductToAddPhoto?> GetByIdToAddPhotoAsync(int productId)
+        public async Task<GetEntityToAddPhoto?> GetByIdToAddPhotoProductAsync(int productId)
         {
-            ProductToAddPhoto? product = null;
+            GetEntityToAddPhoto? product = null;
             await _tx.ExecuteAsync(async (conn, tx) =>
             {
                 product = await _productRepo.GetByIdToAddPhoto(conn, tx, productId);
@@ -196,7 +196,7 @@ namespace DeliveryAPI.Application.Services
         {
             LocalImageStorage.IsImage(image);
 
-            var product = await GetByIdToAddPhotoAsync(productId);
+            var product = await GetByIdToAddPhotoProductAsync(productId);
 
             if (product == null)
                 throw new BusinessException("PRODUCT NOT FOUND", "Product not found");
@@ -278,6 +278,76 @@ namespace DeliveryAPI.Application.Services
             //    // Логування помилки
             //}
             return "Not implemented";
+        }
+
+        public async Task<GetEntityToAddPhoto?> GetByIdToAddPhotoRestaurantAsync(int restaurantId)
+        {
+            GetEntityToAddPhoto? restaurant = null;
+            await _tx.ExecuteAsync(async (conn, tx) =>
+            {
+                restaurant = await _productRepo.GetByIdToAddRestaurantPhoto(conn, tx, restaurantId);
+            });
+            return restaurant;
+        }
+
+
+        public async Task<ImageVariants> UpdateRestaurantImageAsync(int restaurantId, IFormFile image, int userId, string role)
+        {
+            LocalImageStorage.IsImage(image);
+
+            var restaurant = await GetByIdToAddPhotoRestaurantAsync(restaurantId);
+
+            if (restaurant == null)
+                throw new BusinessException("RESTAURANT NOT FOUND", "Restaurant not found");
+
+            ImageVariants result = null;
+
+            string? newImageUrl = null;
+            await _tx.ExecuteAsync(async (conn, tx) =>
+            {
+                try
+                {
+                    if (role != "Admin")
+                    {
+                        int? restaurantId = await _productRepo.CheckUserIdInRestaurant(conn, tx, userId);
+                        if (restaurantId == null)
+                        {
+                            throw new ForbiddenException("You cannot manage this restaurant.");
+                        }
+                    }
+
+                    await using var stream = image.OpenReadStream();
+                    result = await _imageStorage.SaveImageAsync(stream, "restaurants");
+
+                    newImageUrl = result.Original;
+
+                    var oldImagePath = restaurant.ImageUrl;
+
+                    restaurant.ImageUrl = result.Folder;
+
+                    int rows = await _productRepo.UpdateRestaurantPathFolder(conn, tx, restaurant.Id, restaurant.ImageUrl);
+
+                    if (!string.IsNullOrEmpty(oldImagePath))
+                    {
+                        await _imageStorage.DeleteImageAsync(oldImagePath);
+                    }
+
+                    return result;
+
+                }
+                catch (Exception ex)
+                {
+                    if (!string.IsNullOrEmpty(newImageUrl))
+                    {
+                        await _imageStorage.DeleteImageAsync(newImageUrl);
+                    }
+
+                    _logger.LogError(ex, "Error uploading product image for restaurantId {restaurantId}", restaurantId);
+                    throw;
+                }
+            });
+
+            return result;
         }
     }
 }

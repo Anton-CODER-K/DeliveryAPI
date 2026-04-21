@@ -3,6 +3,7 @@ using DeliveryAPI.Application.FakeSmsSender;
 using DeliveryAPI.Application.Interfaces;
 using DeliveryAPI.Application.Services;
 using DeliveryAPI.Application.Verification;
+using DeliveryAPI.Common;
 using DeliveryAPI.Infrastructure.Database;
 using DeliveryAPI.Infrastructure.Repositories;
 using DeliveryAPI.Infrastructure.Storage;
@@ -110,6 +111,7 @@ namespace DeliveryAPI.Api
 
             builder.Services.AddScoped<TransactionExecutor>();
 
+            AppConfigURLBase.BaseUrl = builder.Configuration["BaseUrl"];
 
             var jwt = builder.Configuration.GetSection("Jwt");
 

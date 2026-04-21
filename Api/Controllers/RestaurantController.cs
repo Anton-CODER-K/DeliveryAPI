@@ -1,12 +1,13 @@
-﻿using DeliveryAPI.Application.Exeptions;
-using System.Security.Claims;
+﻿using DeliveryAPI.Api.Contracts.Request;
+using DeliveryAPI.Application.Enums;
+using DeliveryAPI.Application.Exeptions;
+using DeliveryAPI.Application.Models.Result;
 using DeliveryAPI.Application.Services;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.HttpResults;
-using DeliveryAPI.Application.Enums;
-using DeliveryAPI.Application.Models.Result;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace DeliveryAPI.Api.Controllers
 {
@@ -118,15 +119,37 @@ namespace DeliveryAPI.Api.Controllers
         [Authorize]
         [HttpGet]
         [ProducesResponseType(typeof(List<string>), 200)]
-        public async Task<ActionResult<List<string>>> GetReastaurant([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery]int? categoryId = null)
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        public async Task<ActionResult<List<string>>> GetReastaurant([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] int? categoryId = null)
         {
             var result = await _productService.GetRestaurantsAsync(page, pageSize, categoryId);
 
             return Ok(result);
         }
 
+        [Authorize]
+        [HttpPost("image")]
+        [ProducesResponseType(typeof(int), 201)]
+        [ProducesResponseType(typeof(ProblemDetails), 401)]
+        [Consumes("multipart/form-data")]
+        public async Task<ActionResult<int>> UpdateRestaurantImage([FromForm] RestaurantUpdateImageRequest request)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                throw new UnauthorizedException("UserId claim missing");
 
-        // Undone:  Фотки для категорій добавити 
+            var roleClaim = User.FindFirst(ClaimTypes.Role);
+            if (roleClaim == null)
+                throw new UnauthorizedException("Role claim missing");
+            int userId = int.Parse(userIdClaim.Value);
+            string role = roleClaim.Value;
 
+            var result = await _productService.UpdateRestaurantImageAsync(request.RestaurantId, request.Image, userId, role);
+
+            return Ok(result);
+
+            // Undone:  Фотки для категорій добавити 
+
+        }
     }
 }

@@ -2,6 +2,7 @@
 using DeliveryAPI.Api.Contracts.Response;
 using DeliveryAPI.Api.Middleware;
 using DeliveryAPI.Application.Exeptions;
+using DeliveryAPI.Common;
 using DeliveryAPI.Infrastructure.Entity.ReadModel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -123,7 +124,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                     CategoryId = reader.GetInt32(4),
                     RestaurantId = reader.GetInt32(5),
                     Description = reader.IsDBNull(6) ? null : reader.GetString(6),
-                    URLBase = reader.IsDBNull(7) ? null : ("http://37.27.220.44/images/" + reader.GetString(7) + "/thumb.jpg"),
+                    URLBase = reader.IsDBNull(7) ? null : ($"{AppConfigURLBase.BaseUrl}" + "/images/" + reader.GetString(7) + "/thumb.jpg"),
                 });
             }
 
@@ -322,7 +323,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
             return list;
         }
 
-        public async Task<ProductToAddPhoto?> GetByIdToAddPhoto(NpgsqlConnection conn, NpgsqlTransaction tx, int productId)
+        public async Task<GetEntityToAddPhoto?> GetByIdToAddPhoto(NpgsqlConnection conn, NpgsqlTransaction tx, int productId)
         {
             const string sql = """
                 SELECT product_id, i.folder
@@ -339,7 +340,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
 
             if (await reader.ReadAsync())
             {
-                return new ProductToAddPhoto
+                return new GetEntityToAddPhoto
                 {
                     Id = reader.GetInt32(0),
                     ImageUrl = reader.IsDBNull(1) ? null : reader.GetString(1)
@@ -376,6 +377,65 @@ namespace DeliveryAPI.Infrastructure.Repositories
 
             await using var cmd = new NpgsqlCommand(sql, conn, tx);
             cmd.Parameters.Add("@productId", NpgsqlDbType.Integer).Value = productId;
+            cmd.Parameters.Add("@folder", NpgsqlDbType.Varchar).Value = imageUrl;
+
+            return await cmd.ExecuteNonQueryAsync();
+        }
+
+        public async Task<GetEntityToAddPhoto?> GetByIdToAddRestaurantPhoto(NpgsqlConnection conn, NpgsqlTransaction tx, int restaurantId)
+        {
+            const string sql = """
+                SELECT restaurant_id, i.folder
+                FROM restaurants r
+                Left Join images i on i.image_id = r.image_id
+                WHERE restaurant_id = @restaurantId
+                LIMIT 1;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+            cmd.Parameters.Add("@restaurantId", NpgsqlDbType.Integer).Value = restaurantId;
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                return new GetEntityToAddPhoto
+                {
+                    Id = reader.GetInt32(0),
+                    ImageUrl = reader.IsDBNull(1) ? null : reader.GetString(1)
+                };
+            }
+
+            return null;
+        }
+
+        public async Task<int> UpdateRestaurantPathFolder(NpgsqlConnection conn, NpgsqlTransaction tx, int id, string imageUrl)
+        {
+            const string sql = """
+                WITH new_image AS (
+                    INSERT INTO images (folder)
+                    SELECT @folder
+                    FROM restaurants r
+                    WHERE r.restaurant_id = @restaurantId
+                      AND r.image_id IS NULL
+                    RETURNING image_id
+                ),
+                updated_restaurant AS (
+                    UPDATE restaurants r
+                    SET image_id = COALESCE(
+                        (SELECT image_id FROM new_image),
+                        r.image_id
+                    )
+                    WHERE r.restaurant_id = @restaurantId
+                    RETURNING r.image_id
+                )
+                UPDATE images i
+                SET folder = @folder
+                WHERE i.image_id = (SELECT image_id FROM updated_restaurant);
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+            cmd.Parameters.Add("@restaurantId", NpgsqlDbType.Integer).Value = id;
             cmd.Parameters.Add("@folder", NpgsqlDbType.Varchar).Value = imageUrl;
 
             return await cmd.ExecuteNonQueryAsync();

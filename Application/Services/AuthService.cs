@@ -6,6 +6,7 @@ using DeliveryAPI.Application.Interfaces;
 using DeliveryAPI.Application.Models.Input;
 using DeliveryAPI.Application.Models.Result;
 using DeliveryAPI.Application.Verification;
+using DeliveryAPI.Common;
 using DeliveryAPI.Infrastructure.Database;
 using DeliveryAPI.Infrastructure.Entity.ReadModel;
 using DeliveryAPI.Infrastructure.Entity.Record;
@@ -38,6 +39,7 @@ namespace DeliveryAPI.Application.Services
         private readonly INotificationSender _notificationSender;
         private readonly IImageStorage _imageStorage;
         private readonly ILogger<DeliveryService> _logger;
+        
 
         public AuthService(JwtService jwtService, AuthRepository AuthRepo, TransactionExecutor transactionExecutor, IVerificationCodeGenerator codeGenerator, IVerificationMessageBuilder messageBuilder, INotificationSender notificationSender, ILogger<DeliveryService> logger, IImageStorage imageStorage)
         {
@@ -323,7 +325,7 @@ namespace DeliveryAPI.Application.Services
                 UserId = userResult.UserId,
                 Phone = userResult.Phone,
                 Name = userResult.Name,
-                AvatarUrl = "http://37.27.220.44/images/" + userResult.AvatarUrl + "/thumb.jpg",
+                AvatarUrl = string.IsNullOrEmpty(userResult.AvatarUrl) ? null : $"{AppConfigURLBase.BaseUrl}/images/{userResult.AvatarUrl}/thumb.jpg",
                 Role = role
             };
         }

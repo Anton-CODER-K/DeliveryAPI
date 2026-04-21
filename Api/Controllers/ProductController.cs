@@ -22,7 +22,7 @@ namespace DeliveryAPI.Api.Controllers
         }
 
 
-        // UNDONE: Треба буде додати в DTO фото і в сервісі обробку фото, але поки що так
+     
 
         [Authorize(Roles = "Admin,RestaurantUser")]
         [HttpPost]
@@ -47,7 +47,7 @@ namespace DeliveryAPI.Api.Controllers
             return CreatedAtAction(nameof(CreateProduct), new { id = result }, new { productId = result });
         }
 
-        // UNDONE: Додати видачу шляха фоток, але поки що так
+       
         [Authorize]
         [HttpGet]
         [ProducesResponseType(typeof(List<ProductResponse>), 200)]
@@ -97,7 +97,9 @@ namespace DeliveryAPI.Api.Controllers
 
         }
 
-        // UNDONE: Треба буде додати в DTO фото і в сервісі обробку фото, але поки що так
+
+        
+       
         [Authorize(Roles = "Admin,RestaurantUser")]
         [HttpPut("image")]
         [Consumes("multipart/form-data")]

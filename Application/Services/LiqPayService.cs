@@ -28,7 +28,7 @@ namespace DeliveryAPI.Application.Services
                 currency = "UAH",
                 description = $"Delivery payment #{paymentId}",
                 order_id = paymentId.ToString(),
-                server_url = "http://37.27.220.44/payments/webhook"
+                server_url = "{AppConfigURLBase.BaseUrl}/payments/webhook"
             };
 
             var json = JsonSerializer.Serialize(payload);
