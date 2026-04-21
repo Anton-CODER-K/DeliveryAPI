@@ -101,7 +101,7 @@ namespace DeliveryAPI.Application.Services
             return products;
         }
 
-        public async Task<List<string>> GetRestaurantsAsync(int page, int pageSize, int? categoryId)
+        public async Task<List<RestaurantsReadListModels>> GetRestaurantsAsync(int page, int pageSize, int? categoryId)
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
@@ -109,7 +109,7 @@ namespace DeliveryAPI.Application.Services
 
             int offset = (page - 1) * pageSize;
 
-            List<string> restaurants = new List<string>();
+            List<RestaurantsReadListModels> restaurants = new List<RestaurantsReadListModels>();
 
             await _tx.ExecuteAsync(async (conn, tx) =>
             {

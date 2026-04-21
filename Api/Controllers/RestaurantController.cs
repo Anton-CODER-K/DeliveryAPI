@@ -3,6 +3,7 @@ using DeliveryAPI.Application.Enums;
 using DeliveryAPI.Application.Exeptions;
 using DeliveryAPI.Application.Models.Result;
 using DeliveryAPI.Application.Services;
+using DeliveryAPI.Infrastructure.Entity.ReadModel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -118,9 +119,9 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize]
         [HttpGet]
-        [ProducesResponseType(typeof(List<string>), 200)]
+        [ProducesResponseType(typeof(List<RestaurantsReadListModels>), 200)]
         [ProducesResponseType(typeof(ProblemDetails), 401)]
-        public async Task<ActionResult<List<string>>> GetReastaurant([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] int? categoryId = null)
+        public async Task<ActionResult<List<RestaurantsReadListModels>>> GetReastaurant([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] int? categoryId = null)
         {
             var result = await _productService.GetRestaurantsAsync(page, pageSize, categoryId);
 

@@ -282,7 +282,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
             return result;
         }
 
-        public async Task<List<string>> GetRestaurants(
+        public async Task<List<RestaurantsReadListModels>> GetRestaurants(
             NpgsqlConnection conn,
             NpgsqlTransaction tx,
             int offset,
@@ -290,8 +290,9 @@ namespace DeliveryAPI.Infrastructure.Repositories
             int? categoryId)
         {
             const string sql = """
-                SELECT r.name
+                SELECT r.name, r.restaurant_id, i.folder, r.description
                 FROM restaurants r
+                LEFT JOIN images i ON i.image_id = r.image_id
                 WHERE
                     @categoryId IS NULL
                     OR EXISTS (
@@ -311,13 +312,19 @@ namespace DeliveryAPI.Infrastructure.Repositories
             cmd.Parameters.Add("@categoryId", NpgsqlTypes.NpgsqlDbType.Integer)
                 .Value = (object?)categoryId ?? DBNull.Value;
 
-            var list = new List<string>();
+            var list = new List<RestaurantsReadListModels>();
 
             await using var reader = await cmd.ExecuteReaderAsync();
 
             while (await reader.ReadAsync())
             {
-                list.Add(reader.GetString(0));
+                list.Add(new RestaurantsReadListModels
+                {
+                    Name = reader.GetString(0),
+                    RestaurantId = reader.GetInt32(1),
+                    URLBase = reader.IsDBNull(2) ? null : ($"{AppConfigURLBase.BaseUrl}" + "/images/" + reader.GetString(2) + "/thumb.jpg"),
+                    Description = reader.IsDBNull(3) ? null : reader.GetString(3)
+                });
             }
 
             return list;
