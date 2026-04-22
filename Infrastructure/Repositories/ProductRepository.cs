@@ -322,7 +322,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 {
                     Name = reader.GetString(0),
                     RestaurantId = reader.GetInt32(1),
-                    URLBase = reader.IsDBNull(2) ? null : ($"{AppConfigURLBase.BaseUrl}" + "/images/" + reader.GetString(2) + "/thumb.jpg"),
+                    URLBase = reader.IsDBNull(2) ? null : ($"{AppConfigURLBase.BaseUrl}" + "/images/" + reader.GetString(2) + "/medium.jpg"),
                     Description = reader.IsDBNull(3) ? null : reader.GetString(3)
                 });
             }
