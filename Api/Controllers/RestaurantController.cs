@@ -130,10 +130,10 @@ namespace DeliveryAPI.Api.Controllers
 
         [Authorize]
         [HttpPost("image")]
-        [ProducesResponseType(typeof(int), 201)]
+        [ProducesResponseType(typeof(ImageVariants), 201)]
         [ProducesResponseType(typeof(ProblemDetails), 401)]
         [Consumes("multipart/form-data")]
-        public async Task<ActionResult<int>> UpdateRestaurantImage([FromForm] RestaurantUpdateImageRequest request)
+        public async Task<ActionResult> UpdateRestaurantImage([FromForm] RestaurantUpdateImageRequest request)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
