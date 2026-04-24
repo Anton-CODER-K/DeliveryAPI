@@ -289,7 +289,7 @@ namespace DeliveryAPI.Application.Services
             return deliveries;
         }
 
-        public async Task<List<DeliveryUserResult>> GetDeliveriesByCourierAsync(int page, int pageSize, DeliveryStatus deliveryStatus)
+        public async Task<List<DeliveryUserResult>> GetDeliveriesByCourierAsync(int page, int pageSize, DeliveryStatus? deliveryStatus)
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
@@ -411,7 +411,7 @@ namespace DeliveryAPI.Application.Services
         }
 
 
-        public async Task<List<DeliveryUserResult>> GetDeliveriesByCourierAsync(int page, int pageSize, int courierId, DeliveryStatus? deliveryStatus)
+        public async Task<List<DeliveryCourierResult>> GetDeliveriesByCourierAsync(int page, int pageSize, int courierId, DeliveryStatus? deliveryStatus)
         {
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
@@ -419,12 +419,23 @@ namespace DeliveryAPI.Application.Services
 
             int offset = (page - 1) * pageSize;
 
-            List<DeliveryUserResult> deliveries = new List<DeliveryUserResult>();
+
+
+            List<DeliveryCourierResult> deliveries = new List<DeliveryCourierResult>();
 
             await _tx.ExecuteAsync(async (conn, tx) =>
             {
-                deliveries = await _deliveryRepo.GetDeliveriesByCourierId(conn, tx, offset, pageSize, courierId, deliveryStatus);
+                deliveries = await _deliveryRepo.GetDeliveriesByCourier(conn, tx, courierId, offset, pageSize, deliveryStatus);
             });
+
+            foreach (var delivery in deliveries)
+            {
+                if (delivery.StatusDelivery < (int)DeliveryStatus.PickedUp)
+                {
+                    delivery.Address = null;
+                    delivery.User.Phone = null;
+                }
+            }
 
             return deliveries;
         }

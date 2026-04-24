@@ -23,7 +23,7 @@ namespace DeliveryAPI.Api.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(List<DeliveryUserResult>), 200)]
         [ProducesResponseType(typeof(ProblemDetails), 401)]
-        public async Task<ActionResult<List<DeliveryUserResult>>> GetDelivery([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DeliveryStatus deliveryStatus = DeliveryStatus.RestaurantConfirmed)
+        public async Task<ActionResult<List<DeliveryUserResult>>> GetDelivery([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DeliveryStatus? deliveryStatus = null)
         {
             var delivery = await _deliveryService.GetDeliveriesByCourierAsync(page, pageSize, deliveryStatus);
 

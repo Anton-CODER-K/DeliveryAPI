@@ -1,15 +1,17 @@
-﻿using System.Drawing;
-using System.Security.AccessControl;
-using System.Security.Cryptography;
-using System.Xml.Linq;
-using DeliveryAPI.Api.Contracts.Response;
+﻿using DeliveryAPI.Api.Contracts.Response;
 using DeliveryAPI.Application.Enums;
 using DeliveryAPI.Application.Exeptions;
 using DeliveryAPI.Application.Models.Result;
+using DeliveryAPI.Common;
 using DeliveryAPI.Infrastructure.Entity.ReadModel;
 using Microsoft.AspNetCore.Mvc.TagHelpers;
 using Npgsql;
 using NpgsqlTypes;
+using System.Drawing;
+using System.Net.NetworkInformation;
+using System.Security.AccessControl;
+using System.Security.Cryptography;
+using System.Xml.Linq;
 
 namespace DeliveryAPI.Infrastructure.Repositories
 {
@@ -989,6 +991,117 @@ namespace DeliveryAPI.Infrastructure.Repositories
             }
 
             throw new BusinessException("DELIVERY_NOT_FOUND", "Delivery not found");
+        }
+
+        public async Task<List<DeliveryCourierResult>> GetDeliveriesByCourier(NpgsqlConnection conn, NpgsqlTransaction tx,  int courierId, int offset, int pageSize, DeliveryStatus? status)
+        {
+            var deliveries = new Dictionary<int, DeliveryCourierResult>();
+
+
+            const string sql = """
+                WITH deliveries_page AS (
+                    SELECT *
+                    FROM delivery
+                    WHERE (@status IS NULL OR status_delivery_id = @status)
+                    ORDER BY created_at DESC
+                    LIMIT @limit OFFSET @offset
+                )
+
+                SELECT
+                    d.delivery_id,
+                    d.restaurant_id,
+                    d.status_delivery_id,
+                    pm.name,
+                    ps.name,
+                    d.total_price,
+                    d.total_weight_grams,
+                    d.created_at,
+
+                    u.phone_number,
+                    u.name,
+                    i.folder,
+
+                    das.latitude,
+                    das.longitude,
+                    das.house,
+                    das.apartment,
+                    das.entrance,
+                    das.floor,
+                    das.comment,
+
+                    di.product_name,
+                    di.quantity,
+                    di.total_line_amount
+                FROM deliveries_page d
+                JOIN delivery_items di ON di.delivery_id = d.delivery_id
+                JOIN payment_method pm ON pm.payment_method_id = d.payment_method_id
+                JOIN users u ON u.user_id = d.user_id
+                JOIN delivery_address_snapshot das ON das.delivery_id = d.delivery_id
+                Left Join payments p On p.delivery_id = d.delivery_id
+                Left Join payment_statuses ps On ps.Id = p.status_id 
+                Left Join images i On i.user_id = u.user_id
+                Where courier_user_id = @courierId
+                ORDER BY d.created_at DESC;
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@limit", NpgsqlDbType.Integer).Value = pageSize;
+            cmd.Parameters.Add("@offset", NpgsqlDbType.Integer).Value = offset;
+            cmd.Parameters.Add("@courierId", NpgsqlDbType.Integer).Value = courierId;
+            cmd.Parameters.Add("@status", NpgsqlDbType.Integer).Value = status is null ? DBNull.Value : (int)status;
+
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            while (reader.Read())
+            {
+                int deliveryId = reader.GetInt32(0);
+
+                if (!deliveries.ContainsKey(deliveryId))
+                {
+                    deliveries[deliveryId] = new DeliveryCourierResult
+                    {
+                        DeliveryId = deliveryId,
+                        RestaurantId = reader.GetInt32(1),
+                        StatusDelivery = reader.GetInt32(2),
+                        PaymentMethod = reader.GetString(3),
+                        PaymentStatus = reader.IsDBNull(4) ? null : reader.GetString(4),
+                        TotalPrice = reader.GetDecimal(5),
+                        Total_weight_grams = reader.GetInt32(6),
+                        CreatedAt = reader.GetDateTime(7),
+
+                        User = new UserResult
+                        {
+                            Phone = reader.GetString(8),
+                            Name = reader.GetString(9),
+                            AvatarUrl = reader.IsDBNull(10) ? null : ($"{AppConfigURLBase.BaseUrl}" + "/images/" + reader.GetString(10) + "/thumb.jpg"),
+                        },
+
+                        Address = new AddressUserIdByCourierResponse
+                        {
+                            latitude = reader.GetDecimal(11),
+                            longitude = reader.GetDecimal(12),
+                            house = reader.GetString(13),
+                            apartment = reader.IsDBNull(14) ? null : reader.GetString(14),
+                            entrance = reader.IsDBNull(15) ? null : reader.GetString(15),
+                            floor = reader.IsDBNull(16) ? null : reader.GetString(16),
+                            comment = reader.IsDBNull(17) ? null : reader.GetString(17)
+                        },
+                        Items = new List<DeliveryCourierItem>()
+                    };
+                }
+
+                deliveries[deliveryId].Items.Add(new DeliveryCourierItem
+                {
+                    ProductName = reader.GetString(18),
+                    Quantity = reader.GetInt32(19),
+                    TotalLineAmount = reader.GetDecimal(20)
+                });
+
+            }
+
+            return deliveries.Values.ToList();
         }
     }
 }
