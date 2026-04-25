@@ -43,11 +43,11 @@ namespace DeliveryAPI.Infrastructure.Repositories
             return null;
         }
 
-        public async Task<int> InsertDelivery(NpgsqlConnection conn, NpgsqlTransaction tx, int userId, int restaurantId, decimal subtotal, decimal deliveryFee, decimal commissionPercent, decimal commissionAmount, decimal totalAmount, int totalWeight, int paymentMethod)
+        public async Task<int> InsertDelivery(NpgsqlConnection conn, NpgsqlTransaction tx, int userId, int restaurantId, decimal subtotal, decimal deliveryFee, decimal commissionPercent, decimal commissionAmount, decimal totalAmount, int totalWeight, int paymentMethod, string description)
         {
             const string sql = """
-                Insert Into delivery (user_id, restaurant_id, subtotal_amount, delivery_fee, commission_percent, commission_amount, total_price, total_weight_grams, payment_method_id, status_delivery_id)
-                Values (@userId, @restaurantId, @subtotal, @deliveryFee, @commissionPercent, @commissionAmount, @totalAmount, @totalWeight, @paymentMethod, 0)
+                Insert Into delivery (user_id, restaurant_id, subtotal_amount, delivery_fee, commission_percent, commission_amount, total_price, total_weight_grams, payment_method_id, status_delivery_id, description)
+                Values (@userId, @restaurantId, @subtotal, @deliveryFee, @commissionPercent, @commissionAmount, @totalAmount, @totalWeight, @paymentMethod, 0, @description)
                 Returning delivery_id
                 """;
 
@@ -62,6 +62,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
             cmd.Parameters.Add("@totalAmount", NpgsqlDbType.Numeric).Value = totalAmount;
             cmd.Parameters.Add("@totalWeight", NpgsqlDbType.Integer).Value = totalWeight;
             cmd.Parameters.Add("@paymentMethod", NpgsqlDbType.Integer).Value = paymentMethod;
+            cmd.Parameters.Add("@description", NpgsqlDbType.Text).Value = description;
 
             var result = await cmd.ExecuteScalarAsync();
             if (result == null)
@@ -130,7 +131,8 @@ namespace DeliveryAPI.Infrastructure.Repositories
                     d.created_at,
                     di.product_name,
                     di.quantity,
-                    di.total_line_amount
+                    di.total_line_amount,
+                    d.description
                 From delivery d
                 Join delivery_items di On di.delivery_id = d.delivery_id
                 Join status_delivery sd On sd.status_delivery_id = d.status_delivery_id
@@ -161,6 +163,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                         TotalPrice = reader.GetDecimal(4),
                         Total_weight_grams = reader.GetInt32(5),
                         CreatedAt = reader.GetDateTime(6),
+                        Description = reader.GetString(10),
                         Items = new List<DeliveryUserItem>()
                     };
                 }
@@ -277,7 +280,8 @@ namespace DeliveryAPI.Infrastructure.Repositories
                     d.created_at,
                     di.product_name,
                     di.quantity,
-                    di.total_line_amount
+                    di.total_line_amount,
+                    d.description
                 From delivery d
                 Join delivery_items di On di.delivery_id = d.delivery_id
                 Join status_delivery sd On sd.status_delivery_id = d.status_delivery_id
@@ -315,6 +319,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                         TotalPrice = reader.GetDecimal(4),
                         Total_weight_grams = reader.GetInt32(5),
                         CreatedAt = reader.GetDateTime(6),
+                        Description = reader.IsDBNull(10) ? null : reader.GetString(10),
                         Items = new List<DeliveryUserItem>()
                     };
                 }
@@ -428,7 +433,8 @@ namespace DeliveryAPI.Infrastructure.Repositories
                     d.created_at,
                     di.product_name,
                     di.quantity,
-                    di.total_line_amount
+                    di.total_line_amount,
+                    d.description
                 FROM delivery d
                 Join delivery_items di On di.delivery_id = d.delivery_id
                 Join status_delivery sd On sd.status_delivery_id = d.status_delivery_id
@@ -461,6 +467,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                         TotalPrice = reader.GetDecimal(3),
                         Total_weight_grams = reader.GetInt32(4),
                         CreatedAt = reader.GetDateTime(5),
+                        Description = reader.IsDBNull(9) ? null : reader.GetString(9),
                         Items = new List<DeliveryUserItem>()
                     };
                 }
@@ -506,6 +513,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                     d.commission_percent,
                     d.total_weight_grams,
                     d.created_at,
+                    d.description,
                     di.product_name,
                     di.quantity,
                     di.total_line_amount
@@ -549,15 +557,16 @@ namespace DeliveryAPI.Infrastructure.Repositories
                         CommissionPercent = reader.GetDecimal(11),
                         Total_weight_grams = reader.GetInt32(12),
                         CreatedAt = reader.GetDateTime(13),
+                        Description = reader.IsDBNull(14) ? null : reader.GetString(14),
                         Items = new List<DeliveryUserItem>()
                     };
                 }
 
                 deliveries[deliveryId].Items.Add(new DeliveryUserItem
                 {
-                    ProductName = reader.GetString(14),
-                    Quantity = reader.GetInt32(15),
-                    TotalLineAmount = reader.GetDecimal(16)
+                    ProductName = reader.GetString(15),
+                    Quantity = reader.GetInt32(16),
+                    TotalLineAmount = reader.GetDecimal(17)
                 });
 
             }
@@ -572,6 +581,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 SET
                     courier_user_id = @courierId
                 WHERE delivery_id = @deliveryId
+                    AND user_id != @courierId
                     AND courier_user_id IS NULL
                     AND status_delivery_id IN (@preparing, @readyForPickup)
                 RETURNING delivery_id;
@@ -1015,6 +1025,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                     ps.name,
                     d.total_price,
                     d.total_weight_grams,
+                    d.description,
                     d.created_at,
 
                     u.phone_number,
@@ -1069,24 +1080,25 @@ namespace DeliveryAPI.Infrastructure.Repositories
                         PaymentStatus = reader.IsDBNull(4) ? null : reader.GetString(4),
                         TotalPrice = reader.GetDecimal(5),
                         Total_weight_grams = reader.GetInt32(6),
-                        CreatedAt = reader.GetDateTime(7),
+                        Description = reader.IsDBNull(7) ? null : reader.GetString(7),
+                        CreatedAt = reader.GetDateTime(8),
 
                         User = new UserResult
                         {
-                            Phone = reader.GetString(8),
-                            Name = reader.GetString(9),
-                            AvatarUrl = reader.IsDBNull(10) ? null : ($"{AppConfigURLBase.BaseUrl}" + "/images/" + reader.GetString(10) + "/thumb.jpg"),
+                            Phone = reader.GetString(9),
+                            Name = reader.GetString(10),
+                            AvatarUrl = reader.IsDBNull(11) ? null : ($"{AppConfigURLBase.BaseUrl}" + "/images/" + reader.GetString(11) + "/thumb.jpg"),
                         },
 
                         Address = new AddressUserIdByCourierResponse
                         {
-                            latitude = reader.GetDecimal(11),
-                            longitude = reader.GetDecimal(12),
-                            house = reader.GetString(13),
-                            apartment = reader.IsDBNull(14) ? null : reader.GetString(14),
-                            entrance = reader.IsDBNull(15) ? null : reader.GetString(15),
-                            floor = reader.IsDBNull(16) ? null : reader.GetString(16),
-                            comment = reader.IsDBNull(17) ? null : reader.GetString(17)
+                            latitude = reader.GetDecimal(12),
+                            longitude = reader.GetDecimal(13),
+                            house = reader.GetString(14),
+                            apartment = reader.IsDBNull(15) ? null : reader.GetString(15),
+                            entrance = reader.IsDBNull(16) ? null : reader.GetString(16),
+                            floor = reader.IsDBNull(17) ? null : reader.GetString(17),
+                            comment = reader.IsDBNull(18) ? null : reader.GetString(18)
                         },
                         Items = new List<DeliveryCourierItem>()
                     };

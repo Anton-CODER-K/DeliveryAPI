@@ -12,6 +12,10 @@ namespace DeliveryAPI.Api.Contracts.Request
         public int PaymentMethodId { get; set; }
 
         [Required]
+        [MaxLength(100)]
+        public string Description { get; set; }
+
+        [Required]
         public List<CreateDeliveryProduct> Products { get; set; }
     }
 

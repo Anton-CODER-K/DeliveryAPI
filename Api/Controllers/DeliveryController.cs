@@ -37,6 +37,7 @@ namespace DeliveryAPI.Api.Controllers
                 UserId = userId,
                 AddressId = request.AddressId,
                 PaymentMethodId = request.PaymentMethodId,
+                Description = request.Description,
                 Products = request.Products,
             });
             return Ok(new { id = result });

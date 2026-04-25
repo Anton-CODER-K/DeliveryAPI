@@ -11,6 +11,8 @@ namespace DeliveryAPI.Application.Models.Input
 
         public int PaymentMethodId { get; set; }
 
+        public string? Description { get; set; }
+
         public List<CreateDeliveryProduct> Products { get; set; }
     }
 }

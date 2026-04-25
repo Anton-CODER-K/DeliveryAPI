@@ -6,6 +6,8 @@ namespace DeliveryAPI.Application.Models.Result
     {
         public int DeliveryId { get; set; }
 
+        public string? Description { get; set; }
+
         public string StatusDelivery { get; set; }
 
         public string PaymentMethod { get; set; }
@@ -46,6 +48,8 @@ namespace DeliveryAPI.Application.Models.Result
         public decimal TotalPrice { get; set; }
 
         public int Total_weight_grams { get; set; }
+
+        public string Description { get; set; }
 
         public DateTime CreatedAt { get; set; }
 
