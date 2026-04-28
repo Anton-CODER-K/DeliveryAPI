@@ -543,5 +543,24 @@ namespace DeliveryAPI.Infrastructure.Repositories
 
             return await cmd.ExecuteNonQueryAsync();
         }
+
+        public async Task DeleteUserById(NpgsqlConnection conn, NpgsqlTransaction tx, int userId)
+        {
+            const string sql = """
+                Update users
+                Set is_active = false,
+                    deleted_at = now(),
+                    phone_number = null,
+                    name = 'Deleted User'
+                    password_hash = null,
+                    is_phone_verified = false
+                Where user_id = @userId
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+            cmd.Parameters.Add("@userId", NpgsqlDbType.Integer).Value = userId;
+
+            await cmd.ExecuteNonQueryAsync();
+        }
     }
 }

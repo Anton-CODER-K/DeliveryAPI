@@ -123,16 +123,12 @@ namespace DeliveryAPI.Api.Controllers
         // UNDONE: Треба буде додати в сервісі видалення Юзера бо так требує Apple, але поки що так 
         [Authorize]
         [HttpDelete("me")]
-        public async Task<ActionResult> DeleteMe()
+        public async Task<ActionResult> DeleteMe([FromBody] AuthDeleteMeRequest request)
         {
-            //var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            //if (userIdClaim == null)
-            //    throw new UnauthorizedException("UserId claim missing");
+            await _authService.DeleteMeAsync(request.Password);
 
-            //int userId = int.Parse(userIdClaim.Value);
 
-            //await _authService.DeleteMeAsync(userId);
-            return NoContent();
+            return Ok("Deleted Allredy");
         }
 
         // UNDONE: Треба буде додати в сервісі видалення сесії, але поки що так

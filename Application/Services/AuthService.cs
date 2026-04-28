@@ -1,4 +1,5 @@
 ﻿using DeliveryAPI.Api.Contracts.Request;
+using DeliveryAPI.Api.Contracts.Response;
 using DeliveryAPI.Api.Middleware;
 using DeliveryAPI.Application.Exeptions;
 using DeliveryAPI.Application.FakeSmsSender;
@@ -19,6 +20,7 @@ using Npgsql;
 using SixLabors.ImageSharp;
 using System.Data;
 using System.Globalization;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -369,7 +371,40 @@ namespace DeliveryAPI.Application.Services
 
         }
 
+        // UNDONE: Видаляти ще токени і рефреш токени, сесії, верифікаційні коди, аватарку і т.д.
+        public async Task DeleteMeAsync(string password, int userId)
+        {
+            UserByMeResult user = null;
+            UserByLoginResult userResult = null;
+            await _tx.ExecuteAsync(async (conn, tx) =>
+            {
+                user = await _authRepo.GetUserById(conn, tx, userId);
 
+                if (user == null)
+                {
+                    throw new UnauthorizedException("User not found");
+                }
+
+                userResult = await _authRepo.GetUserByPhone(conn, tx, user.Phone);
+            });
+
+
+            if (userResult == null)
+                throw new UnauthorizedException("Invalid phone number or password");
+
+            if (string.IsNullOrEmpty(userResult.HashPassword))
+                throw new UnauthorizedException("Invalid phone number or password");
+
+            if (!BCrypt.Net.BCrypt.Verify(password, userResult.HashPassword))
+                throw new UnauthorizedException("Invalid phone number or password");
+
+
+            await _tx.ExecuteAsync(async (conn, tx) =>
+            {
+                await _authRepo.DeleteUserById(conn, tx, userResult.UserId);
+            });
+
+        }
 
 
 
@@ -450,6 +485,8 @@ namespace DeliveryAPI.Application.Services
             var bytes = Encoding.UTF8.GetBytes(token);
             return Convert.ToHexString(sha.ComputeHash(bytes));
         }
+
+       
     }
 
     

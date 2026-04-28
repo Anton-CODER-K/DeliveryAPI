@@ -101,11 +101,7 @@ namespace DeliveryAPI.Application.Services
                     paymentId,
                     webhook.payment_id);
 
-                //await _deliveryRepo.UpdateStatus(
-                //    conn,
-                //    tx,
-                //    deliveryId,
-                //    DeliveryStatus.Paid);
+               
             });
         }
     }
