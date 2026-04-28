@@ -3,6 +3,7 @@ using DeliveryAPI.Api.Contracts.Webhook;
 using System.Text.Json;
 using System.Text;
 using System.Security.Cryptography;
+using DeliveryAPI.Common;
 
 namespace DeliveryAPI.Application.Services
 {
@@ -28,7 +29,7 @@ namespace DeliveryAPI.Application.Services
                 currency = "UAH",
                 description = $"Delivery payment #{paymentId}",
                 order_id = paymentId.ToString(),
-                server_url = "{AppConfigURLBase.BaseUrl}/payments/webhook"
+                server_url = $"{AppConfigURLBase.BaseUrl}/payments/webhook"
             };
 
             var json = JsonSerializer.Serialize(payload);
