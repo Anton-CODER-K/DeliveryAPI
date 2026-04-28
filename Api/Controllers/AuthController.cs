@@ -125,7 +125,13 @@ namespace DeliveryAPI.Api.Controllers
         [HttpDelete("me")]
         public async Task<ActionResult> DeleteMe([FromBody] AuthDeleteMeRequest request)
         {
-            await _authService.DeleteMeAsync(request.Password);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                throw new UnauthorizedException("UserId claim missing");
+            int userId = int.Parse(userIdClaim.Value);
+
+
+            await _authService.DeleteMeAsync(request.Password, userId);
 
 
             return Ok("Deleted Allredy");
