@@ -1050,8 +1050,8 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 JOIN delivery_address_snapshot das ON das.delivery_id = d.delivery_id
                 Left Join payments p On p.delivery_id = d.delivery_id
                 Left Join payment_statuses ps On ps.Id = p.status_id 
-                Left Join images i On i.user_id = u.user_id
-                Where courier_user_id = @courierId
+                Left Join images i On i.image_id = u.image_id
+                Where d.courier_user_id = @courierId
                 ORDER BY d.created_at DESC;
                 """;
 
@@ -1106,9 +1106,9 @@ namespace DeliveryAPI.Infrastructure.Repositories
 
                 deliveries[deliveryId].Items.Add(new DeliveryCourierItem
                 {
-                    ProductName = reader.GetString(18),
-                    Quantity = reader.GetInt32(19),
-                    TotalLineAmount = reader.GetDecimal(20)
+                    ProductName = reader.GetString(19),
+                    Quantity = reader.GetInt32(20),
+                    TotalLineAmount = reader.GetDecimal(21)
                 });
 
             }
