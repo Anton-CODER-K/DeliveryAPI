@@ -584,7 +584,6 @@ namespace DeliveryAPI.Infrastructure.Repositories
                     AND user_id != @courierId
                     AND courier_user_id IS NULL
                     AND status_delivery_id IN (@preparing, @readyForPickup)
-                RETURNING delivery_id;
                 """;
 
             await using var cmd = new NpgsqlCommand(sql, conn, tx);
@@ -593,14 +592,14 @@ namespace DeliveryAPI.Infrastructure.Repositories
             cmd.Parameters.Add("@courierId", NpgsqlDbType.Integer).Value = courierId;
             cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer).Value = deliveryId;
            
-            cmd.Parameters.Add("@courierAssigned", NpgsqlDbType.Integer).Value = (int)DeliveryStatus.ReadyForPickup;
+            //cmd.Parameters.Add("@courierAssigned", NpgsqlDbType.Integer).Value = (int)DeliveryStatus.ReadyForPickup;
             cmd.Parameters.Add("@preparing", NpgsqlDbType.Integer).Value = (int)DeliveryStatus.Preparing;
             cmd.Parameters.Add("@readyForPickup", NpgsqlDbType.Integer).Value = (int)DeliveryStatus.ReadyForPickup;
 
             int rows = await cmd.ExecuteNonQueryAsync();
 
             if (rows == 0)
-                throw new BusinessException("DELIVERY_ALREADY_TAKEN", "Delivery already taken");
+                throw new BusinessException("DELIVERY_NOT_TAKEN", "Delivery already taken but order this you");
 
             return rows;
 
