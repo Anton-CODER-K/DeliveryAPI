@@ -163,7 +163,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                         TotalPrice = reader.GetDecimal(4),
                         Total_weight_grams = reader.GetInt32(5),
                         CreatedAt = reader.GetDateTime(6),
-                        Description = reader.GetString(10),
+                        Description = reader.IsDBNull(10) ? null : reader.GetString(10),
                         Items = new List<DeliveryUserItem>()
                     };
                 }
