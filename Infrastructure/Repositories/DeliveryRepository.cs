@@ -583,7 +583,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 WHERE delivery_id = @deliveryId
                     AND user_id != @courierId
                     AND courier_user_id IS NULL
-                    AND status_delivery_id IN (@preparing, @readyForPickup)
+                    AND status_delivery_id IN (@preparing, @readyForPickup, @restaurantConfirmed)
                 """;
 
             await using var cmd = new NpgsqlCommand(sql, conn, tx);
