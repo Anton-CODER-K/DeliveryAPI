@@ -50,6 +50,14 @@ namespace DeliveryAPI.Application.Services
                 // 2. Отримати продукти
                 var products = await _productRepo.GetProductsByIds(conn, tx, input.Products);
 
+                foreach (var p in input.Products)
+                {
+                    if(p.Quantity == 0)
+                    {
+                        throw new BusinessException("NO_PRODUCTS", "No valid products");
+                    }
+                }
+
                 if (products.Count == 0)
                     throw new BusinessException("NO_PRODUCTS", "No valid products");
 

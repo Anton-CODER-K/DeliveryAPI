@@ -59,7 +59,7 @@ namespace DeliveryAPI.Api.Controllers
             return Ok(result);
         }
 
-        [Authorize(Roles = "Courier")]
+        [Authorize()]
         [HttpPut("{id}/confirmations")]
         [ProducesResponseType(typeof(string), 200)]
         [ProducesResponseType(typeof(ProblemDetails), 401)]
