@@ -5,6 +5,7 @@ using DeliveryAPI.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DeliveryAPI.Application.Models.Result;
+using DeliveryAPI.Api.Contracts.Request;
 
 namespace DeliveryAPI.Api.Controllers
 {
@@ -13,10 +14,14 @@ namespace DeliveryAPI.Api.Controllers
     public class CourierController : ControllerBase
     {
         private readonly DeliveryService _deliveryService;
+        private readonly CourierService _courierService;
+        private readonly TrackingService _trackingService;
 
-        public CourierController(DeliveryService deliveryService)
+        public CourierController(DeliveryService deliveryService, CourierService courierService, TrackingService trackingService)
         {
             _deliveryService = deliveryService;
+            _courierService = courierService;
+            _trackingService = trackingService;
         }
 
         [Authorize(Roles = "Admin,Courier")]
@@ -99,5 +104,25 @@ namespace DeliveryAPI.Api.Controllers
 
             return Ok("PickedUp Delivery");
         }
+
+        //[Authorize(Roles = "Courier")]
+        //[HttpPost("location")]
+        //public async Task UpdateLocation(LocationDto dto)
+        //{
+        //    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        //    if (userIdClaim == null)
+        //        throw new UnauthorizedException("UserId claim missing");
+
+        //    int courierId = int.Parse(userIdClaim.Value);
+
+        //    await _courierService.UpdateLocation(courierId, dto);
+
+        //    var orders = await _deliveryService.GetActiveOrders(courierId);
+
+        //    foreach (var orderId in orders)
+        //    {
+        //        await _trackingService.SendLocation(orderId, dto);
+        //    }
+        //}
     }
 }

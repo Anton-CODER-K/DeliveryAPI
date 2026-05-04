@@ -591,8 +591,8 @@ namespace DeliveryAPI.Infrastructure.Repositories
             
             cmd.Parameters.Add("@courierId", NpgsqlDbType.Integer).Value = courierId;
             cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer).Value = deliveryId;
-           
-            //cmd.Parameters.Add("@courierAssigned", NpgsqlDbType.Integer).Value = (int)DeliveryStatus.ReadyForPickup;
+
+            cmd.Parameters.Add("@restaurantConfirmed", NpgsqlDbType.Integer).Value = (int)DeliveryStatus.RestaurantConfirmed;
             cmd.Parameters.Add("@preparing", NpgsqlDbType.Integer).Value = (int)DeliveryStatus.Preparing;
             cmd.Parameters.Add("@readyForPickup", NpgsqlDbType.Integer).Value = (int)DeliveryStatus.ReadyForPickup;
 
