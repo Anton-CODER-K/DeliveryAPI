@@ -270,7 +270,15 @@ namespace DeliveryAPI.Infrastructure.Repositories
 
 
             const string sql = """
-                Select
+                WITH deliveries_page AS (
+                    SELECT d.delivery_id
+                    FROM delivery d
+                    WHERE (@status IS NULL OR d.status_delivery_id = @status)
+                      AND d.restaurant_id = @restaurantId
+                    ORDER BY d.created_at DESC
+                    LIMIT @limit OFFSET @offset
+                )
+                SELECT
                     d.delivery_id,
                     sd.name,
                     pm.name,
@@ -282,16 +290,14 @@ namespace DeliveryAPI.Infrastructure.Repositories
                     di.quantity,
                     di.total_line_amount,
                     d.description
-                From delivery d
-                Join delivery_items di On di.delivery_id = d.delivery_id
-                Join status_delivery sd On sd.status_delivery_id = d.status_delivery_id
-                Join payment_method pm On pm.payment_method_id = d.payment_method_id
-                Left Join payments p On p.delivery_id = d.delivery_id
-                Left Join payment_statuses ps On ps.Id = p.status_id 
-                WHERE (@status IS NULL OR d.status_delivery_id = @status)
-                AND d.restaurant_id = @restaurantId
-                ORDER BY created_at DESC
-                LIMIT @limit OFFSET @offset;
+                FROM deliveries_page dp
+                JOIN delivery d ON d.delivery_id = dp.delivery_id
+                JOIN delivery_items di ON di.delivery_id = d.delivery_id
+                JOIN status_delivery sd ON sd.status_delivery_id = d.status_delivery_id
+                JOIN payment_method pm ON pm.payment_method_id = d.payment_method_id
+                LEFT JOIN payments p ON p.delivery_id = d.delivery_id
+                LEFT JOIN payment_statuses ps ON ps.id = p.status_id
+                ORDER BY d.created_at DESC;
                 """;
 
             await using var cmd = new NpgsqlCommand(sql, conn, tx);
@@ -760,33 +766,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
             return Convert.ToInt32(await cmd.ExecuteScalarAsync());
         }
 
-        public async Task UpdateDeliveryStatus(
-            NpgsqlConnection conn,
-            NpgsqlTransaction tx,
-            int deliveryId,
-            DeliveryStatus status)
-        {
-            const string sql = """
-                UPDATE delivery
-                SET status_delivery_id = @status
-                WHERE delivery_id = @deliveryId
-                AND (
-                    SELECT COUNT(DISTINCT role_name_snapshot)
-                    FROM delivery_confirmations
-                    WHERE delivery_id = @deliveryId
-                ) >= 2;
-                """;
-
-            await using var cmd = new NpgsqlCommand(sql, conn, tx);
-
-            cmd.Parameters.Add("@status", NpgsqlDbType.Integer)
-                .Value = (int)status;
-
-            cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer)
-                .Value = deliveryId;
-
-            await cmd.ExecuteNonQueryAsync();
-        }
+       
 
         public async Task<int> UpdateDeliveryStatus(
             NpgsqlConnection conn,
@@ -799,7 +779,12 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 UPDATE delivery
                 SET status_delivery_id = @newStatus
                 WHERE delivery_id = @deliveryId
-                AND status_delivery_id = @expectedStatus;
+                AND status_delivery_id = @expectedStatus
+                AND (
+                     SELECT COUNT(DISTINCT role_name_snapshot)
+                     FROM delivery_confirmations
+                     WHERE delivery_id = @deliveryId
+                ) >= 2;
                 """;
 
             await using var cmd = new NpgsqlCommand(sql, conn, tx);

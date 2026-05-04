@@ -168,5 +168,23 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 DeliveryId = reader.GetInt32(3)
             };
         }
+
+        public async Task<int> UpdateCashStatusPayment(NpgsqlConnection conn, NpgsqlTransaction tx, int deliveryId)
+        {
+            const string sql = """
+                Update payments
+                Set status_id = @statusId
+                Where delivery_id = @deliveryId
+                and provider = "cash"
+                """;
+
+            await using var cmd = new NpgsqlCommand(sql, conn, tx);
+
+            cmd.Parameters.Add("@statusId", NpgsqlDbType.Integer).Value = (int)PaymentStatus.Success;
+            cmd.Parameters.Add("@deliveryId", NpgsqlDbType.Integer).Value = deliveryId;
+
+            return await cmd.ExecuteNonQueryAsync();
+
+        }
     }
 }

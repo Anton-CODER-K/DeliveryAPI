@@ -17,10 +17,11 @@ namespace DeliveryAPI.Application.Services
         private readonly AddressRepository _addressRepo;
         private readonly ProductRepository _productRepo;
         private readonly PaymentService _paymentService;
+        private readonly PaymentRepository _paymentRepo;
         private readonly ILogger<DeliveryService> _logger;
 
 
-        public DeliveryService(TransactionExecutor tx, DeliveryRepository deliveryRepository, AddressRepository addressRepository, ProductRepository productRepo, ILogger<DeliveryService> logger, PaymentService paymentService)
+        public DeliveryService(TransactionExecutor tx, DeliveryRepository deliveryRepository, AddressRepository addressRepository, ProductRepository productRepo, ILogger<DeliveryService> logger, PaymentService paymentService, PaymentRepository paymentRepository)
         {
             _tx = tx;
             _deliveryRepo = deliveryRepository;
@@ -28,6 +29,7 @@ namespace DeliveryAPI.Application.Services
             _productRepo = productRepo;
             _logger = logger;
             _paymentService = paymentService;
+            _paymentRepo = paymentRepository;
         }
 
 
@@ -365,13 +367,20 @@ namespace DeliveryAPI.Application.Services
                     throw new BusinessException("ALREADY_CONFIRMED", "Alredy confirmed");
 
                 
-                await _deliveryRepo.UpdateDeliveryStatus(
+                rows = await _deliveryRepo.UpdateDeliveryStatus(
                     conn, tx,
                     deliveryId,
-                    DeliveryStatus.Delivered);
+                    DeliveryStatus.Delivered,
+                    DeliveryStatus.PickedUp);
 
-                //await _paymentRepo.UpdateCash
-                
+                if (rows == 0)
+                    throw new BusinessException("INVALID_STATUS", "Invalid status");
+
+                rows = await _paymentRepo.UpdateCashStatusPayment(conn, tx, deliveryId);
+
+                if (rows == 0)
+                    throw new BusinessException("Error", "Error");
+
             });
 
             _logger.LogInformation("Courier {UserId} confirmed delivery {DeliveryId}", courierId, deliveryId);
@@ -388,7 +397,7 @@ namespace DeliveryAPI.Application.Services
                     ConfirmationRole.User);
 
                 if (rows == 0)
-                    throw new BusinessException("ERROR", "Error");
+                    throw new BusinessException("ALREADY_CONFIRMED", "Alredy confirmed");
 
 
                 rows = await _deliveryRepo.UpdateDeliveryStatus(
@@ -399,6 +408,11 @@ namespace DeliveryAPI.Application.Services
 
                 if (rows == 0)
                     throw new BusinessException("INVALID_STATUS", "Invalid status");
+
+                rows = await _paymentRepo.UpdateCashStatusPayment(conn, tx, deliveryId);
+
+                if (rows == 0)
+                    throw new BusinessException("Error", "Error");
             });
 
             _logger.LogInformation("User {UserId} confirmed delivery {DeliveryId}", userId, deliveryId);
