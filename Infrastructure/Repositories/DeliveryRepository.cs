@@ -297,7 +297,7 @@ namespace DeliveryAPI.Infrastructure.Repositories
                 JOIN payment_method pm ON pm.payment_method_id = d.payment_method_id
                 LEFT JOIN payments p ON p.delivery_id = d.delivery_id
                 LEFT JOIN payment_statuses ps ON ps.id = p.status_id
-                ORDER BY d.created_at DESC;
+                ORDER BY d.created_at DESC, d.delivery_id DESC;
                 """;
 
             await using var cmd = new NpgsqlCommand(sql, conn, tx);

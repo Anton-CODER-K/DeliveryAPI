@@ -31,7 +31,7 @@ namespace DeliveryAPI.Api.Controllers
         [HttpGet("deliveries")]
         [ProducesResponseType(typeof(List<DeliveryUserResult>), 200)]
         [ProducesResponseType(typeof(ProblemDetails), 401)]
-        public async Task<ActionResult<List<DeliveryUserResult>>> GetDelivery([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DeliveryStatus? status = DeliveryStatus.Created)
+        public async Task<ActionResult<List<DeliveryUserResult>>> GetDelivery([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DeliveryStatus? status = null)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
