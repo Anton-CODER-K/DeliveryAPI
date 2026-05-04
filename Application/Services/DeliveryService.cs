@@ -369,6 +369,8 @@ namespace DeliveryAPI.Application.Services
                     conn, tx,
                     deliveryId,
                     DeliveryStatus.Delivered);
+
+                //await _paymentRepo.UpdateCash
                 
             });
 
@@ -383,7 +385,7 @@ namespace DeliveryAPI.Application.Services
                     conn, tx,
                     deliveryId,
                     userId,
-                    ConfirmationRole.Courier);
+                    ConfirmationRole.User);
 
                 if (rows == 0)
                     throw new BusinessException("ERROR", "Error");
